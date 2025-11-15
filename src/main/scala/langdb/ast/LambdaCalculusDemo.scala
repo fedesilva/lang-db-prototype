@@ -1,6 +1,7 @@
 package langdb.ast
 
 import cats.effect.IO
+import cats.syntax.all.*
 
 object LambdaCalculusDemo:
 
@@ -76,7 +77,7 @@ object LambdaCalculusDemo:
             )
           }
           _ <-
-            if (dependencies.freeVariables.nonEmpty)
+            if dependencies.freeVariables.nonEmpty then
               IO.println(s"  Free variables: ${dependencies.freeVariables.mkString(", ")}")
             else
               IO.println("  No free variables")

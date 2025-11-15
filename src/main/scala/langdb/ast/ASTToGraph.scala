@@ -75,12 +75,27 @@ object ASTToGraph:
       
       case Term.Mult(left, right) =>
         convertBinaryOp("Mult", left, right, builder)
+
+      case Term.Eq(left, right) =>
+        convertBinaryOp("Eq", left, right, builder)
       
       case Term.And(left, right) =>
         convertBinaryOp("And", left, right, builder)
       
       case Term.StringConcat(left, right) =>
         convertBinaryOp("StringConcat", left, right, builder)
+
+      case Term.If(cond, thenBranch, elseBranch) =>
+        val id = freshId()
+        val condId = convertTerm(cond, builder)
+        val thenId = convertTerm(thenBranch, builder)
+        val elseId = convertTerm(elseBranch, builder)
+
+        builder.addNode(ASTNode(id, "If", Map.empty))
+        builder.addEdge(ASTEdge(id, condId, "cond"))
+        builder.addEdge(ASTEdge(id, thenId, "then"))
+        builder.addEdge(ASTEdge(id, elseId, "else"))
+        id
       
       case Term.Not(operand) =>
         convertUnaryOp("Not", operand, builder)

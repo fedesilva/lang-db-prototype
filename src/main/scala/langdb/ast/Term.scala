@@ -22,6 +22,8 @@ enum Term:
   // Built-in functions (assume they exist)
   case Add(left: Term, right: Term)
   case Mult(left: Term, right: Term)
+  case Eq(left: Term, right: Term)
+  case If(cond: Term, thenBranch: Term, elseBranch: Term)
   case Not(operand: Term)
   case And(left: Term, right: Term)
   case StringConcat(left: Term, right: Term)

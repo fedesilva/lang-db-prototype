@@ -157,7 +157,7 @@ object GraphArrowSerializer:
         try {
           val nodes = scala.collection.mutable.ListBuffer[ASTNode]()
           
-          while (reader.loadNextBatch()) {
+          while reader.loadNextBatch() do
             val root = reader.getVectorSchemaRoot
             val rowCount = root.getRowCount
             
@@ -166,7 +166,7 @@ object GraphArrowSerializer:
             val keysVector = root.getVector("data_keys").asInstanceOf[VarCharVector]
             val valuesVector = root.getVector("data_values").asInstanceOf[VarCharVector]
             
-            for (i <- 0 until rowCount) {
+            for i <- 0 until rowCount do
               val id = NodeId(idVector.get(i))
               val nodeType = new String(typeVector.get(i))
               val keys = new String(keysVector.get(i)).split(",").filter(_.nonEmpty)
@@ -174,8 +174,6 @@ object GraphArrowSerializer:
               val data = keys.zip(values).toMap
               
               nodes += ASTNode(id, nodeType, data)
-            }
-          }
           
           nodes.toList
           
@@ -196,7 +194,7 @@ object GraphArrowSerializer:
         try {
           val edges = scala.collection.mutable.ListBuffer[ASTEdge]()
           
-          while (reader.loadNextBatch()) {
+          while reader.loadNextBatch() do
             val root = reader.getVectorSchemaRoot
             val rowCount = root.getRowCount
             
@@ -205,18 +203,16 @@ object GraphArrowSerializer:
             val typeVector = root.getVector("edge_type").asInstanceOf[VarCharVector]
             val labelVector = root.getVector("label").asInstanceOf[VarCharVector]
             
-            for (i <- 0 until rowCount) {
+            for i <- 0 until rowCount do
               val from = NodeId(fromVector.get(i))
               val to = NodeId(toVector.get(i))
               val edgeType = new String(typeVector.get(i))
               val label = {
                 val labelBytes = labelVector.get(i)
-                if (labelBytes.nonEmpty) Some(new String(labelBytes)) else None
+                if labelBytes.nonEmpty then Some(new String(labelBytes)) else None
               }
               
               edges += ASTEdge(from, to, edgeType, label)
-            }
-          }
           
           edges.toList
           
