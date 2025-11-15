@@ -1,24 +1,24 @@
 package langdb.ast
 
 // Terms in our lambda calculus
-enum Term:
+enum Term derives CanEqual:
   // Variables (references)
   case Var(name: String)
-  
+
   // Lambda abstraction (lam)
   case Lambda(param: String, paramType: Type, body: Term)
-  
+
   // Function application (app)
   case App(func: Term, arg: Term)
-  
+
   // Let binding (bnd)
   case Let(name: String, value: Term, body: Term)
-  
+
   // Literals
   case IntLit(value: Int)
   case StringLit(value: String)
   case BoolLit(value: Boolean)
-  
+
   // Built-in functions (assume they exist)
   case Add(left: Term, right: Term)
   case Mult(left: Term, right: Term)

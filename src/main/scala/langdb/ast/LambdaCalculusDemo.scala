@@ -2,6 +2,7 @@ package langdb.ast
 
 import cats.effect.IO
 import cats.syntax.all.*
+import langdb.typechecker.TypeChecker
 
 object LambdaCalculusDemo:
 
@@ -79,8 +80,7 @@ object LambdaCalculusDemo:
           _ <-
             if dependencies.freeVariables.nonEmpty then
               IO.println(s"  Free variables: ${dependencies.freeVariables.mkString(", ")}")
-            else
-              IO.println("  No free variables")
+            else IO.println("  No free variables")
 
           // Type check
           _ <- TypeChecker
@@ -88,7 +88,7 @@ object LambdaCalculusDemo:
             .flatMap(typ => IO.println(s"Type: $typ"))
             .handleErrorWith(err => IO.println(s"Type error: ${err.getMessage}"))
 
-          _ <- IO.println()
+          _ <- IO.println("")
         } yield ()
       }
       _ <- IO.println("Demo completed!")

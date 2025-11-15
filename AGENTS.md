@@ -39,6 +39,17 @@ When in doubt, follow instructions and explain why things fail.
 Laziness is not tolerated.
 
 
+## Context management
+
+Read the `context/todo.md` file for tasks
+When a task is done, move it to `context/done.md` verbatim.
+
+## Code quality
+Always run `sbt scalafmtAll` and `sbt scalafixAll` before considering a task done.
+Do not tolerate warnings.
+Fix exhaustivity warnings.
+
+
 ### Important Workflow and Interaction Rules
 It is paramount you follow this to the T. 
 Your work will not be accepted and cancelled, and you might be discarded if you consistently fail to follow the following:

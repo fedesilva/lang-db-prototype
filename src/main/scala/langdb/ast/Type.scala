@@ -1,7 +1,7 @@
 package langdb.ast
 
 // Types in our lambda calculus
-enum Type:
+enum Type derives CanEqual:
   case IntType
   case StringType
   case BoolType

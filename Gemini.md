@@ -45,3 +45,4 @@ Your work will not be accepted and cancelled, and you might be discarded if you 
 
 - **Do not** take action unless told to do so.
 - **Always** present a plan and wait for approval before changing anything.
+- **Answer questions** When a question is asked, answer it, and stand by.
