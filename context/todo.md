@@ -1,21 +1,22 @@
 
 # Goals
 
-## Main Goal for now
+## Main Goal 
 
 * define two languages, one functional and one imperative.
     - MicroML
     - NanoProc
 * try to share infrastucture and find out what we can and can't share.
+* evolve the graph engine
+    - represent both languages
+    - rewrite/write specific functionality (like dependency checking, escapa analysis)
+        using the graph itself.
+    - design a mechanism to 
 
 * write small compilers (no codegen, just generating the ast and pretty printing it is ok)
     - first source to in memory ast, dump to console
     - pretty print the ast.
 
-* extend the languages to use  the graph db
-    - first, walk the ast, write into db
-        - validate
-    - second, try to just parse directly into the db
 
 
 
@@ -35,8 +36,15 @@
             - others here.
 
 
+* extend the languages to use  the graph db
+    - first, walk the ast, write into db
+        - validate
+    - second, try to just parse directly into the db
 
-* selected
-    * define and refine the graph api
-        - document what we have right now
+* Subsume parts into the graph
+    - Dependency analyzer 
+
+* (working on this) define and refine the graph api 
+    - document what we have right now
+    - do we need to add stuff now, later?
 
