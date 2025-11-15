@@ -1,0 +1,106 @@
+package langdb.ast
+
+import cats.effect.IO
+
+case class TypeContext(bindings: Map[String, Type]):
+  def bind(name: String, typ: Type): TypeContext =
+    copy(bindings = bindings + (name -> typ))
+  
+  def lookup(name: String): Option[Type] =
+    bindings.get(name)
+
+sealed trait TypeError extends Exception:
+  def message: String
+  override def getMessage: String = message
+
+case class UnboundVariable(name: String) extends TypeError:
+  def message = s"Unbound variable: $name"
+
+case class TypeMismatch(expected: Type, actual: Type) extends TypeError:
+  def message = s"Type mismatch: expected $expected, got $actual"
+
+case class NotAFunction(typ: Type) extends TypeError:
+  def message = s"Expected function type, got $typ"
+
+object TypeChecker:
+  
+  def typeCheck(term: Term): IO[Type] =
+    typeCheckWithContext(term, TypeContext(Map.empty))
+  
+  def typeCheckWithContext(term: Term, ctx: TypeContext): IO[Type] =
+    term match
+      case Term.Var(name) =>
+        ctx.lookup(name) match
+          case Some(typ) => IO.pure(typ)
+          case None => IO.raiseError(UnboundVariable(name))
+      
+      case Term.Lambda(param, paramType, body) =>
+        val newCtx = ctx.bind(param, paramType)
+        typeCheckWithContext(body, newCtx).map(bodyType =>
+          Type.FunctionType(paramType, bodyType)
+        )
+      
+      case Term.App(func, arg) =>
+        for {
+          funcType <- typeCheckWithContext(func, ctx)
+          argType <- typeCheckWithContext(arg, ctx)
+          resultType <- funcType match
+            case Type.FunctionType(paramType, returnType) =>
+              if (paramType == argType)
+                IO.pure(returnType)
+              else
+                IO.raiseError(TypeMismatch(paramType, argType))
+            case other =>
+              IO.raiseError(NotAFunction(other))
+        } yield resultType
+      
+      case Term.Let(name, value, body) =>
+        for {
+          valueType <- typeCheckWithContext(value, ctx)
+          newCtx = ctx.bind(name, valueType)
+          bodyType <- typeCheckWithContext(body, newCtx)
+        } yield bodyType
+      
+      case Term.IntLit(_) =>
+        IO.pure(Type.IntType)
+      
+      case Term.StringLit(_) =>
+        IO.pure(Type.StringType)
+      
+      case Term.BoolLit(_) =>
+        IO.pure(Type.BoolType)
+      
+      case Term.Add(left, right) =>
+        for {
+          leftType <- typeCheckWithContext(left, ctx)
+          rightType <- typeCheckWithContext(right, ctx)
+          _ <- if (leftType == Type.IntType && rightType == Type.IntType)
+                 IO.unit
+               else
+                 IO.raiseError(TypeMismatch(Type.IntType, if leftType != Type.IntType then leftType else rightType))
+        } yield Type.IntType
+      
+      case Term.Eq(left, right) =>
+        for {
+          leftType <- typeCheckWithContext(left, ctx)
+          rightType <- typeCheckWithContext(right, ctx)
+          _ <- if (leftType == rightType)
+                 IO.unit
+               else
+                 IO.raiseError(TypeMismatch(leftType, rightType))
+        } yield Type.BoolType
+      
+      case Term.If(condition, thenBranch, elseBranch) =>
+        for {
+          condType <- typeCheckWithContext(condition, ctx)
+          _ <- if (condType == Type.BoolType)
+                 IO.unit
+               else
+                 IO.raiseError(TypeMismatch(Type.BoolType, condType))
+          thenType <- typeCheckWithContext(thenBranch, ctx)
+          elseType <- typeCheckWithContext(elseBranch, ctx)
+          _ <- if (thenType == elseType)
+                 IO.unit
+               else
+                 IO.raiseError(TypeMismatch(thenType, elseType))
+        } yield thenType
