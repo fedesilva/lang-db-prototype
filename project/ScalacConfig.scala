@@ -5,9 +5,8 @@ object ScalacConfig {
 
   lazy val opts: Seq[String] =
     Seq(
-      "-rewrite",
       "-source",
-      "3.0-migration",
+      "3.0",
       "-deprecation", // Emit warning and location for usages of deprecated APIs.
       "-encoding",
       "utf-8", // Specify character encoding used by source files.
@@ -21,7 +20,8 @@ object ScalacConfig {
       "-Wunused:all",
       "-Xfatal-warnings", // Fail the compilation if there are any warnings.
       "-language:strictEquality",
-      "-new-syntax" // Enforce new syntax
+      "-new-syntax", // Enforce new syntax
+      "-rewrite"
     )
 
 }

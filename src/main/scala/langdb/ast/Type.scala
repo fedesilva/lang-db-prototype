@@ -6,9 +6,3 @@ enum Type:
   case StringType
   case BoolType
   case FunctionType(from: Type, to: Type)
-
-  override def toString: String = this match
-    case IntType => "Int"
-    case StringType => "String"
-    case BoolType => "Bool"
-    case FunctionType(from, to) => s"($from -> $to)"
