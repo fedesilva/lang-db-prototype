@@ -6,7 +6,7 @@ import langdb.typechecker.TypeChecker
 
 object ParserDemo:
 
-  // Example programs in our ML-like syntax
+  // Example programs in MicroML
   def examplePrograms(): List[(String, String)] = List(
     // Simple identity function
     (
@@ -56,7 +56,7 @@ object ParserDemo:
 
   def demo(): IO[Unit] =
     for {
-      _ <- IO.println("=== Parser Demo ===")
+      _ <- IO.println("=== MicroML Parser Demo ===")
       _ <- IO.println("")
       _ <- examplePrograms().traverse { case (name, source) =>
         for {

@@ -5,6 +5,17 @@ import langdb.ast.{Term, Type}
 
 import MultiLineWhitespace.*
 
+/** Parser for MicroML, a minimalistic ML-like language.
+  *
+  * Syntax:
+  *   - Lambdas: fn x: Int => body
+  *   - Let bindings: let x = value in body
+  *   - Application: f x y (space-separated, left-associative)
+  *   - Literals: 42, "hello", true, false
+  *   - Operators: +, *, ==, &&, not, ++
+  *   - Conditionals: if cond then e1 else e2
+  *   - Types: Int, String, Bool, A -> B
+  */
 object TermParser:
 
   // Type parsers
