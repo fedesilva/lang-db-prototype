@@ -20,8 +20,7 @@ object ScalacConfig {
       "-Wunused:all",
       "-Xfatal-warnings", // Fail the compilation if there are any warnings.
       "-language:strictEquality",
-      "-new-syntax", // Enforce new syntax
-      "-rewrite"
+      "-new-syntax" // Enforce new syntax
     )
 
 }

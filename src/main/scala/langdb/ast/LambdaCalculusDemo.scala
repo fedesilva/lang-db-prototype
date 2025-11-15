@@ -1,7 +1,6 @@
 package langdb.ast
 
 import cats.effect.IO
-import langdb.ast.*
 
 object LambdaCalculusDemo:
 
@@ -63,7 +62,6 @@ object LambdaCalculusDemo:
   def demo(): IO[Unit] =
     for {
       _ <- IO.println("=== Lambda Calculus with Simple Types Demo ===")
-      _ <- IO.println()
       _ <- examples().traverse { case (name, term) =>
         for {
           _ <- IO.println(s"Example: $name")
