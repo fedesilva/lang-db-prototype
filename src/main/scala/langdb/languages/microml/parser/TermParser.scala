@@ -1,7 +1,7 @@
-package langdb.parser
+package langdb.languages.microml.parser
 
 import fastparse.*
-import langdb.ast.{Term, Type}
+import langdb.languages.microml.ast.{Term, Type}
 
 import MultiLineWhitespace.*
 
@@ -16,7 +16,7 @@ import MultiLineWhitespace.*
   *   - Conditionals: if cond then e1 else e2
   *   - Types: Int, String, Bool, A -> B
   */
-object TermParser:
+private[microml] object TermParser:
 
   // Type parsers
   def baseType[$: P]: P[Type] =

@@ -1,4 +1,4 @@
-package langdb.ast
+package langdb.languages.microml.ast
 
 /** Tracks how variable names are bound and referenced inside a term. */
 final case class NameInfo(

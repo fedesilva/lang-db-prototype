@@ -1,8 +1,8 @@
-package langdb.ast
+package langdb.languages.microml.ast
 
 import cats.effect.IO
 import cats.syntax.all.*
-import langdb.typechecker.TypeChecker
+import langdb.languages.microml.typechecker.TypeChecker
 
 object LambdaCalculusDemo:
 

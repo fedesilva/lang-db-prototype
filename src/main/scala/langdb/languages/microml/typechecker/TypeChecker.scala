@@ -1,8 +1,8 @@
-package langdb.typechecker
+package langdb.languages.microml.typechecker
 
 import cats.effect.IO
 import cats.syntax.all.*
-import langdb.ast.{Term, Type}
+import langdb.languages.microml.ast.{Term, Type}
 
 final case class TypeContext(bindings: Map[String, Type]):
   def bind(name: String, typ: Type): TypeContext =

@@ -1,6 +1,7 @@
-package langdb.graph
+package langdb.languages.microml.graph
 
-import langdb.ast.Term
+import langdb.graph.{ASTEdge, ASTGraph, ASTNode, NodeId}
+import langdb.languages.microml.ast.Term
 
 import scala.collection.mutable
 

@@ -1,8 +1,8 @@
-package langdb.parser
+package langdb.languages.microml.parser
 
 import cats.effect.IO
 import cats.syntax.all.*
-import langdb.typechecker.TypeChecker
+import langdb.languages.microml.typechecker.TypeChecker
 
 object ParserDemo:
 
@@ -65,7 +65,7 @@ object ParserDemo:
           _ <- IO.println("")
 
           // Parse the source
-          _ <- TermParser.parse(source) match
+          _ <- MicroMLParser.parse(source) match
             case Right(term) =>
               for {
                 _ <- IO.println(s"Parsed AST: $term")

@@ -1,4 +1,4 @@
-package langdb.ast
+package langdb.languages.microml.ast
 
 // Terms in our lambda calculus
 enum Term derives CanEqual:
