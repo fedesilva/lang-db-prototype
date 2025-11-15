@@ -41,14 +41,17 @@ Laziness is not tolerated.
 
 ## Context management
 
-Read the `context/todo.md` file for tasks
-When a task is done, move it to `context/done.md` verbatim.
+* Read the `context/todo.md` file for tasks
+* When a task is done, mark it as done
+* Only when you are explicitely requested, move it to `context/done.md` verbatim.
+    - this will give the author a chance to validate the task is satisfactorily completed.
 
 ## Code quality
 Always run `sbt scalafmtAll` and `sbt scalafixAll` before considering a task done.
-Do not tolerate warnings.
-Fix exhaustivity warnings.
+    - Only if code has been touched.
 
+Do not tolerate compiler warnings.
+Fix exhaustivity warnings.
 
 ### Important Workflow and Interaction Rules
 It is paramount you follow this to the T. 
@@ -56,3 +59,4 @@ Your work will not be accepted and cancelled, and you might be discarded if you 
 
 - **Do not** take action unless told to do so.
 - **Always** present a plan and wait for approval before changing anything.
+- **Format** your reponses so that they are easy to read: left margin of 10 chars, 120 chars long lines, no more.
