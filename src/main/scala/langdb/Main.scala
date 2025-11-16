@@ -12,6 +12,9 @@ object Main extends IOApp.Simple {
       _ <- ParserDemo.demo()
       _ <- IO.println("")
       _ <- IO.println("")
+      _ <- langdb.languages.nanoproc.ParserDemo.demo()
+      _ <- IO.println("")
+      _ <- IO.println("")
       _ <- LambdaCalculusDemo.demo()
     } yield ()
 }
