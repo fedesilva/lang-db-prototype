@@ -83,6 +83,6 @@ if x == 0 then 1 else x
 **Type System:**
 - Base types: `Int`, `String`, `Bool`
 - Function types: `A -> B`
-- Hindley-Milner type inference
+- Simply typed lambda calculus with explicit type annotations (no inference)
 
 The implementation includes a FastParse-based parser, type checker, and basic dependency analysis.

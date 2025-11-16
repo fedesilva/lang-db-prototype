@@ -49,3 +49,4 @@ Your work will not be accepted and cancelled, and you might be discarded if you 
 - **Do not** take action unless told to do so.
 - **Always** present a plan and wait for approval before changing anything.
 - **Format** your reponses so that they are easy to read: left margin of 10 chars, 120 chars long lines, no more.
+- **When asked to research or find** something, you don't need a plan, just do it, but no changes.
