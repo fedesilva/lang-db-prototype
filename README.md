@@ -13,7 +13,7 @@ representation, with each compilation phase creating new graph layers connected 
 The plan is to implement two languages—one functional, one imperative—to explore what infrastructure can
 be shared:
 
-*   **MicroML:** A small ML-like language (typed lambda calculus). Currently implemented.
+*   **MicroML:** A small ML-like language ( Simple Typed Lambda Calculus ). Currently implemented.
 *   **NanoProc:** A small imperative language. In the works.
 
 What exists today:

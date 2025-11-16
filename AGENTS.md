@@ -1,20 +1,7 @@
 
 # Project
 
-Prototype of a graph db specialized to language representation.
-The goal is to have a generic tool that can represent asts, 
-enable rewrites, and querying via a stable interface.
-
-Think how many IRs Rust, has for example AST, HIR, MIR, ...
-With a generic lang-db you would create the ast nodes, then apply 
-rewrites on top of it, potentially keeping the source nodes linked.
-
-Eventually we could write generic optimization algorithms based on
-the graph db tooling.
-
-A later goal is to implement an interaction network based on the language
-(whatever language) and perform optimizations and infer memory allocation, lifetimes, etc
-given the interactions.
+Read Readme.md (if you need, read docs, too)
 
 
 # Tech
