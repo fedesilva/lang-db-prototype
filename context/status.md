@@ -7,15 +7,42 @@ If you *need* you can peruse the documents in `docs/`.
 
 ---
 
-**What we have :**
+**Language Implementations (Current State):**
+
+Both languages are fully implemented using traditional compiler techniques:
+
+**MicroML (Functional):**
+- Complete AST: Term, Type enums
+- FastParse-based parser
+- Type checker with traditional AST traversal
+- Dependency analyzer
+- 82 tests (parser + type checker)
+- Higher-order functions, let bindings, lambdas
+
+**NanoProc (Imperative):**
+- Complete AST: Expr, Stmt, Program, ProcDef
+- FastParse-based parser
+- Type checker with procedure validation and return checking
+- 65 tests (parser + type checker)
+- Mutable variables, procedures, while loops, if/else
+
+**Both use traditional in-heap AST techniques.** Type checking, analysis, and all operations
+work on native Scala data structures. Graph conversion exists but is only for serialization -
+no analyses operate on the graph yet.
+
+---
+
+**What we have (Graph Infrastructure):**
 - Generic node/edge representation: `ASTNode(id, nodeType, data)` + `ASTEdge(from, to, edgeType)`
 - Bidirectional graph: efficient parent/child traversal
 - Basic traversals: DFS, BFS, ancestors, descendants, type-based search
 - Arrow serialization: columnar storage works
 - Language-agnostic: String-based types, key-value data
 
-**Short term (two languages): ADEQUATE**
-The API can represent both MicroML and NanoProc. The stringly-typed approach is flexible enough.
+**Short term (two languages): COMPLETE (with traditional techniques)**
+Both MicroML and NanoProc are fully implemented using classic compiler approaches.
+The graph API can represent both languages structurally. The stringly-typed approach is flexible enough
+for serialization, but no analyses operate on the graph representation yet.
 
 **Medium term (graph-based analyses): SIGNIFICANT GAPS**
 
@@ -59,9 +86,15 @@ The API can represent both MicroML and NanoProc. The stringly-typed approach is 
    - Problematic for IDE scenarios
 
 **Status**
-It's a **structural foundation** but lacks the **semantic and transformation layers** needed for
-our stated goals. we can represent ASTs from multiple languages, but we can't yet DO anything
-sophisticated with them (query, rewrite, analyze, transform, track provenance).
+We have **two complete language implementations** using traditional techniques. The graph infrastructure
+provides a **structural foundation** but lacks the **semantic and transformation layers** needed for
+our stated goals. We can represent ASTs from multiple languages in the graph, but analyses still
+operate on the traditional heap-based ASTs. We can't yet DO anything sophisticated with the graph
+representation (query, rewrite, analyze, transform, track provenance).
+
+**Next Phase:**
+Migrate analyses to operate on graph structures rather than traditional ASTs. This will help us
+discover what APIs and representations are needed for the graph-based approach.
 
 **What needs design attention:**
 1. Scope and binding representation (urgent for dependency analysis on graph)
