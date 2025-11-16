@@ -30,8 +30,8 @@
     - call the parser
     - then the demo is the same.
 
-* create a second language
-    - this task is to design, and spec, not yet build 
+* [DONE] create a second language
+    - this task is to design, and spec, not yet build
     - new language:
         - imperative
         - small like MicroML

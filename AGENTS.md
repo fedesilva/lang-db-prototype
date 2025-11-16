@@ -56,5 +56,5 @@ Your work will not be accepted and cancelled, and you might be discarded if you 
 
 - **Interaction and Responses** 
     - format your reponses so that they are easy to read: left margin of 10 chars, 120 chars long lines, no more. 
-    - put new lines between phrases 
     - use bullet point lists for enumerating things
+    - use code fences to display code 
