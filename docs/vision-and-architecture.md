@@ -2,170 +2,152 @@
 
 ## Vision
 
-The graph **IS** the IR. Each rewrite creates an overlay of nodes connected to previous versions,
-maintaining provenance through the transformation chain. End goal: interaction network
-representation enabling interaction calculus computation model.
-
----
+The graph IS the IR. Each rewrite creates an overlay of nodes connected to previous versions, maintaining
+provenance through the transformation chain. End goal: a unified Interaction Network Intermediate
+Representation (INIR) that enables a powerful, provable, and parallel computation model.
 
 ## Core Principles
 
 ### 1. Graph as First-Class IR
 
-The graph is not just a representation of an AST—it IS the intermediate representation. All
-transformations, analyses, and optimizations operate on and produce graph structures.
-
-**Progression:**
-```
-Surface Language (MicroML, NanoProc)
-    ↓ parse
-Parse Tree (graph)
-    ↓ rewrite
-AST (graph)
-    ↓ type check
-Typed AST (graph)
-    ↓ optimize
-Optimized IR (graph)
-    ↓ transform
-Interaction Network (graph)
-```
+The graph is not just a representation—it IS the intermediate representation. All transformations, analyses,
+and optimizations operate on and produce graph structures.
 
 ### 2. Append-Only Transformations with Provenance
 
-Each compilation phase creates a new layer in the graph without modifying previous layers.
-Phases are connected through provenance edges.
+Each compilation phase creates a new layer in the graph without modifying previous layers. Phases are
+connected through provenance edges. This is the key to non-destructive transformation and perfect error
+reporting.
 
 **Model:**
-```
-root₁ (parse) ──→ [parse tree subgraph]
-                   ↓ (some nodes shared)
-root₂ (ast) ────→ [ast subgraph, references parse tree nodes]
-                   ↓ (mostly shared + new type nodes)
-root₃ (typed) ──→ [typed ast + type annotation nodes]
-                   ↓ (transformations)
-root₄ (optimized) → [optimized subgraph]
-```
 
-**Key insight:** Phase identity is determined by reachability from roots, not by metadata.
-Like persistent collections, shared structure implies sharing across phases.
-
-**Example - AST vs Typed AST:**
 ```
-AST root → Lambda(param="x") → body → ...
-
-TypedAST root → Lambda(param="x") → body → ...
-                    ↓ (new edge, only reachable from typed root)
-                 TypeNode(Int → Int)
+root₁ (parsetree) ──→ [ParseTree subgraph]
+                     ↓ (provenance edges)
+root₂ (inir) ──────→ [INIR subgraph, derived from parsetree]
+                     ↓ (validation/rewrite)
+root₃ (typed) ─────→ [INIR subgraph + type annotations]
+                     ↓ (analysis/rewrite)
+root₄ (lifetime) ──→ [INIR subgraph + memory/lifetime info]
+                     ↓ (optimization)
+root₅ (optimized) ─→ [Optimized INIR subgraph]
+...
 ```
 
-From `ast-root`: can traverse Lambda, body, etc. Type nodes are unreachable.
-From `typed-ast-root`: can traverse same structure PLUS type information.
+**Structural sharing:** Each new root reuses nodes from previous phases—like a persistent data structure.
+For example, the typecheck phase (root₃) doesn't duplicate the INIR nodes from root₂. Instead, it adds
+new type nodes and new edges connecting these type nodes to the existing INIR nodes. Each root creates a
+new "version" of the graph that shares structure with previous versions, only adding what's new for that
+phase.
 
-**Phases add edges and nodes; they don't modify existing structure.**
+**Key insight:** Phase identity is determined by reachability from roots. An error found in the typed graph
+can be traced back to the user's source code by following provenance edges back to the parsetree graph.
+A downstream analysis (like lifetime) can query the typed graph's annotations simply by traversing from
+its own root.
 
 ### 3. Immutable Storage Aligned with Immutable Semantics
 
-Both Arrow IPC and Parquet are immutable storage formats, which perfectly aligns with the
-append-only graph model.
+Both Arrow IPC and Parquet are immutable storage formats, which perfectly aligns with the append-only
+graph model.
 
----
+## The INIR: Core Computation Model
 
-## Development Strategy
+The Interaction Network Intermediate Representation (INIR) is the single, unified target for all language
+frontends. It is not just an IR; it is a static analysis and optimization framework based on the
+interaction calculus.
 
-### Phase 1: Learn by Doing (Current)
+The INIR represents the program as a graph of agents (nodes) and wires (edges). "Optimization" is the
+process of applying local rewrite rules to this graph at compile-time.
 
-1. Implement two small languages: MicroML (functional) and NanoProc (imperative)
-2. Write traditional case-class based analyses (dependency analysis, type checking, etc.)
-3. Do this for BOTH languages
-4. Learn patterns, understand commonalities and differences
+By lowering to the INIR, the compiler can prove properties about the code
+that enable massive optimizations:
 
-**Rationale:** Avoid premature abstraction. Learn what needs to be generic by implementing
-it twice in concrete form first.
+- **GC-Free Code:** Linearity in the graph proves a value is not shared, allowing for stack-based
+  allocation or in-place mutation. Consumption of agents in rewrite rules translates directly to `free()`
+  or stack-popping.
 
-### Phase 2: Graph-Based Analyses (Medium Term)
+- **Opportunistic Mutation:** The compiler can prove when a value is linear (not-shared) and safely emit
+  a native mutating instruction (e.g., `INC %rax`) for a functionally "immutable" operation, achieving
+  C-like performance.
 
-Once patterns are clear from Phase 1:
-1. Migrate analyses to work directly on graph
-2. Implement graph-based dependency analysis
-3. Implement graph-based type checking
-4. Design and implement rewrite/transformation API
-5. Design and implement pattern matching/query API
+- **Automatic Fusion:** A chain like `map.filter.map` is represented as a series of connected agents.
+  Compile-time rewrite rules will "fuse" these agents, eliminating all intermediate data structuresread
+  before code generation.
 
-### Phase 3: Interaction Networks (Long Term)
+- **Inherent Parallelism:** The graph topology makes data-flow explicit, enabling the compiler to
+  identify parallel execution paths and emit SIMD instructions.
 
-Transform graph IR into interaction network representation for interaction calculus
-computation model.
+- **Parallel Compiler:** Local rewrite rules are independent—the compiler itself can apply them in
+  parallel across multiple cores during optimization.
 
----
+## Development Strategy & Pipeline
+
+The old strategy of building separate, traditional compilers is replaced by a cleaner, more direct
+pipeline focused on the INIR.
+
+### The Pipeline:
+
+```
+Parser → ParseTree (Graph) → Transformation → INIR (Graph) → Profit (Codegen)
+```
+
+- **Parser:** Consumes source text and emits a graph conforming to the ParseTree-Schema. This graph is
+  the concrete syntax tree.
+
+- **ParseTree Graph:** A language-specific graph that represents the source code 1:1. Its only purpose is
+  to provide the ground truth for source provenance.
+
+- **Transformation:** A language-specific function that rewrites the ParseTree graph into the INIR graph,
+  adding provenance edges from the new INIR nodes back to the ParseTree nodes. This pass does all
+  language-specific desugaring (e.g., lowering while loops or var assignments).
+
+- **INIR Graph:** The universal, language-agnostic representation. All optimization, type checking, and
+  analysis is performed at this level.
+
+- **Profit (Codegen):** A backend that traverses the final, optimized INIR graph and emits native code.
+
+## Schemas: A "Type System" for the Graph
+
+The graph itself is generic (Node, Edge). Schemas provide the "type system" for the graph, defining the
+rules for a valid graph at a specific phase.
+
+This formalizes the pipeline and makes it robust:
+
+### ParseTree-Schema (Language-Specific):
+- Defines the valid `nodeTypes` (e.g., "WhileLoop", "VarDecl") and `edgeTypes` (e.g., "condition",
+  "body") for a language's parse tree.
+- Validates the output of the parser.
+
+### INIR-Schema (Universal):
+- Defines the universal agents and connections of the interaction calculus (e.g., Lambda, Apply, Add).
+- The INIR-Type-Checker is just a validator for this schema. If a graph is well-formed and passes this
+  schema's validation, it is type-correct.
+
+Adding a new language becomes a clear, modular process:
+1. Define the language's ParseTree-Schema.
+2. Write a Parser that emits a graph conforming to that schema.
+3. Write the Transformation function that lowers a valid ParseTree-Schema graph to a valid INIR-Schema
+   graph.
 
 ## Storage Architecture
 
 ### Two-Tier Storage Strategy
 
-**Arrow IPC for Active Work:**
-- Fast read/write during development
-- Working compilation session
-- Can be memory-mapped: let OS manage paging
-- Don't keep full graph in heap
-- OS keeps hot parts in RAM, pages out cold parts
-- Program stays lean, OS does memory management
+- **Arrow IPC (Hot):** For the active, working compilation graph. Memory-mapped to let the OS manage
+  paging, keeping the compiler's heap small.
 
-**Parquet for Stable Code + Distribution:**
-- Compiled modules that rarely change
-- High compression saves disk space
-- Columnar format enables partial reads
-- Distribution format for libraries
-- Query optimization via predicate pushdown
+- **Parquet (Cold):** For stable, compiled libraries. High compression and columnar format allow for
+  partial, lazy reads.
 
-### Workflow for Large Programs
+### Library Distribution & WPO-by-Default
 
-```
-1. Parse → Arrow (hot, working set)
-2. Type check → Arrow (hot, working set)
-3. Unchanged modules → already in Parquet (cold storage)
-4. Changed module → recompile via Arrow
-5. Once stable → write to Parquet
-6. Next compilation:
-   - Load Parquet for stable modules (partial read, just metadata)
-   - Load Arrow for active work
-   - Merge graphs
-```
+Libraries are distributed as Parquet files containing their fully typed INIR graph.
 
-**Key advantage:** 80% of large program unchanged between recompiles. Parquet's columnar
-format allows reading only what's needed (types, names, etc.) without deserializing
-entire subgraphs.
-
-### Library Distribution
-
-Libraries are distributed as Parquet files containing fully typed IR graphs.
-
-**Example workflow:**
-```
-ASCII-art library:
-  1. Compiled to fully typed IR graph
-  2. Saved as ascii-art-v1.0.parquet
-  3. Other projects:
-     - Read parquet (just public API types/signatures initially)
-     - Lazy-load implementations as needed
-     - Merge into working graph
-```
-
-**Benefits:**
-- Don't load entire library graph upfront
-- Query: "what types does this module export?" → read just type columns
-- Only when calling a function, load its implementation subgraph
-- Incremental, on-demand loading
-- Compression matters for distribution (smaller downloads)
-
-### Storage Analogy
-
-Think of it like traditional compilation:
-- **Arrow IPC** = `.o` object files (working, mutable workflow, fast)
-- **Parquet** = `.a` static libraries (immutable, compressed, distributable)
-- **Memory mapping** = virtual memory for IR
-- **Columnar reads** = lazy loading with fine granularity
-
----
+**Linking is Graph Subsumption:**
+- When you import a library, its graph is merged into your working graph.
+- This provides Whole-Program Optimization (WPO) by default. The compiler's optimization passes run on the
+  entire merged graph, enabling it to inline, specialize, and fuse code across library boundaries as if
+  it were all one project.
 
 ## Graph Structure Details
 
@@ -174,113 +156,65 @@ Think of it like traditional compilation:
 ```scala
 case class NodeId(value: Long) extends AnyVal
 
-case class ASTNode(
-  id:       NodeId,
-  nodeType: String,              // "Var", "Lambda", "App", "TypeNode", etc.
-  data:     Map[String, String]  // node-specific data
+case class Node(
+  id:         NodeId,
+  nodeType:   String,                 // Meaning defined by the schema (e.g., "WhileLoop", "Lambda")
+  data:       Map[String, String]     // Payloads (e.g., variable names, literal values)
 )
 
-case class ASTEdge(
-  from:     NodeId,
-  to:       NodeId,
-  edgeType: String,              // "body", "func", "arg", "type", "derived-from", etc.
-  label:    Option[String] = None
+case class Edge(
+  from:       NodeId,
+  to:         NodeId,
+  edgeType:   String,                 // Meaning defined by the schema (e.g., "body", "derived-from")
+  label:      Option[String] = None
 )
 ```
 
-### Edge Categories (by convention, not structure)
+### Edge Categories (by convention)
 
-**Structural edges** (within a phase):
-- `"body"`, `"func"`, `"arg"`, `"left"`, `"right"`, etc.
-- Define AST structure within a phase
-
-**Provenance edges** (across phases):
-- `"previous-root"`: links roots across phases
-- `"derived-from"`: new node derived from previous phase node
-- `"corresponds-to"`: node in new phase corresponds to node in previous phase
-
-**Semantic edges** (added by analyses):
-- `"type"`: node's type annotation
-- `"binding"`: variable reference to its binding site
-- `"dependency"`: dependency relationship
+- **Structural:** ("body", "condition", "arg") Defines the structure within a phase.
+- **Provenance:** ("derived-from", "corresponds-to") Links nodes across phases (e.g., INIR node to
+  ParseTree node).
 
 ### Phase Management
 
-**Roots define phases:**
-- Each phase has a root node (entry point)
-- Tracked externally: `Map[String, NodeId]` mapping phase names to root IDs
-- Phase identity determined by reachability from root
-- No phase metadata needed on nodes
+- **Roots define phases:** A `Map[String, NodeId]` tracks the entry points (e.g., "parsetree" → root₁,
+  "inir" → root₂).
+- **Phase identity is reachability:** A node's phase is determined by the root it is reachable from.
 
-**Query pattern:**
-```scala
-// Get all nodes in a phase
-def getPhaseGraph(root: NodeId): Set[NodeId] =
-  // Traverse from root following structural edges
-  // Stop at provenance edges (don't follow backwards)
+## Summary of Benefits
 
-// Get type information (only in typed phase)
-def getTypedView(typedRoot: NodeId): TypedGraph =
-  // Traverse from typed root, including type edges
-  // Type nodes unreachable from earlier phase roots
-```
+This architecture provides a unified system where advanced optimizations are not special passes, but
+natural properties of the representation:
 
----
+- **GC-Free Code Generation:** Provable linearity analysis on the INIR enables stack allocation and
+  `free()`-like-precision.
 
-## Future Directions
+- **Efficient Cell Reuse:** The compiler generates explicit allocation and deallocation, enabling
+  freelist-based memory management. Freed cells are immediately available for reuse without returning
+  memory to the OS, providing predictable performance with no garbage collection pauses.
 
-### Query and Transformation APIs
+- **Unboxed Primitives:** Affine types enable primitive values (integers, floats) to be represented
+  as raw machine types without boxing or heap allocation, matching C-like efficiency while
+  maintaining functional semantics.
 
-**Pattern Matching:**
-- Match subgraph patterns for optimization opportunities
-- Find all instances of specific patterns
-- Example: "find all lambdas where body has free variable X"
+- **Opportunistic Mutation:** Compile-time proof that a value is unshared, enabling safe use of
+  high-performance mutating instructions.
 
-**Graph Rewriting:**
-- Define rewrite rules as pattern → replacement
-- Apply rules to transform graphs
-- Create new phase with transformed subgraphs
+- **Automatic Deforestation:** `map.filter.map` and other chains are fused at compile-time via graph
+  rewrites, eliminating intermediate allocations.
 
-### Metadata and Analysis Results
+- **Whole-Program Optimization (WPO) by Default:** "Linking is graph subsumption," so optimizations run
+  on the fully-merged project and library graphs.
 
-**Extensible metadata:**
-- Source locations (line, column, file)
-- Type information from type checker
-- Analysis results (liveness, escape analysis, etc.)
-- Error and warning information
-- Comments and documentation
+- **Effortless Dead Code Elimination (DCE):** Codegen is just a graph reachability traversal from the main
+  root. If a node is unreachable, it's not "eliminated"—it is simply never visited and never emitted.
 
-**Attachment strategy:** Either extend `data: Map[String, String]` with conventions,
-or add semantic edges to metadata nodes, or both.
+- **Parallel Compiler:** Local rewrite rules can be applied in parallel by the compiler itself on modern
+  multi-core machines.
 
-### Incremental Compilation
+- **Unified & Minimal IR:** All languages target the single INIR, requiring only one type-checker and one
+  optimizer.
 
-- Structural sharing between graph versions
-- Efficient updates to subgraphs
-- Only recompute affected regions
-- Cache analysis results attached to stable nodes
-
-### Interaction Networks
-
-Transform high-level graph IR into interaction network representation:
-- Nodes become interaction agents
-- Edges become connections
-- Computation becomes local graph rewriting
-- Inherently parallel execution model
-
----
-
-## Summary
-
-This architecture provides:
-
-1. **Unified representation:** All phases use the same graph structure
-2. **Provenance tracking:** Every transformation maintains links to source
-3. **Efficient storage:** Hot (Arrow) / Cold (Parquet) tiers match access patterns
-4. **Library ecosystem:** Distribute compiled libraries as queryable graph databases
-5. **Incremental compilation:** Share structure, only recompute what changed
-6. **Scalability:** OS-managed memory mapping + columnar partial reads
-7. **Future-proof:** Path to interaction networks and advanced computation models
-
-The graph is not just a data structure—it's a **columnar IR database** with hot/cold
-storage tiers, immutable semantics, and provenance tracking built in from the start.
+- **Perfect Error Provenance:** Type errors in the INIR trace directly back to the ParseTree graph, which
+  maps 1:1 with the user's source code.
