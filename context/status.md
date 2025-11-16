@@ -3,9 +3,11 @@ The graph IS the IR. Each rewrite creates an overlay of nodes connected to previ
 maintaining provenance through the transformation chain. End goal: interaction network
 representation enabling interaction calculus computation model.
 
+If you *need* you can peruse the documents in `docs/`.
+
 ---
 
-**What we have (structurally sound):**
+**What we have :**
 - Generic node/edge representation: `ASTNode(id, nodeType, data)` + `ASTEdge(from, to, edgeType)`
 - Bidirectional graph: efficient parent/child traversal
 - Basic traversals: DFS, BFS, ancestors, descendants, type-based search

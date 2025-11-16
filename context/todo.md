@@ -22,18 +22,22 @@
 
 ## Tasks
 
-* Current 
-    * create a second language
-        - first, move the current ast, parser to `languages.microml`
-        - this task is to design, and spec, not yet build 
-        - new language:
-            - imperative
-            - small like MicroML
-            - call it NanoProc
-                - in package `languages.nanoproc`
-        - design questions:
-            - can we use the same internal representation?
-            - others here.
+* replace the lambda calculus demo 
+    - implement the example using MicroML directly
+    - call the parser
+    - then the demo is the same.
+
+* create a second language
+    - first, move the current ast, parser to `languages.microml`
+    - this task is to design, and spec, not yet build 
+    - new language:
+        - imperative
+        - small like MicroML
+        - call it NanoProc
+            - in package `languages.nanoproc`
+    - design questions:
+        - can we use the same internal representation?
+        - others here.
 
 
 * extend the languages to use  the graph db
@@ -41,10 +45,5 @@
         - validate
     - second, try to just parse directly into the db
 
-* Subsume parts into the graph
-    - Dependency analyzer 
 
-* (working on this) define and refine the graph api 
-    - document what we have right now
-    - do we need to add stuff now, later?
 
