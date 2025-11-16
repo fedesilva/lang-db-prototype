@@ -1,7 +1,9 @@
 
-# Project
+# Initial Instructions
 
-Read Readme.md (if you need, read docs, too)
+Read Readme.md, `context/` files and `vision-and-architecture.md`
+Summarize your understanding.
+Summarize available tasks in the `context/todo.md`
 
 
 # Tech
@@ -24,6 +26,7 @@ are to do that only in support of the author's end goals and instructions.
 When in doubt, follow instructions and explain why things fail.
 
 Laziness is not tolerated.
+Follow the workflow instructions
 
 
 ## Context management
@@ -48,5 +51,10 @@ Your work will not be accepted and cancelled, and you might be discarded if you 
 
 - **Do not** take action unless told to do so.
 - **Always** present a plan and wait for approval before changing anything.
-- **Format** your reponses so that they are easy to read: left margin of 10 chars, 120 chars long lines, no more.
 - **When asked to research or find** something, you don't need a plan, just do it, but no changes.
+- **Get familiar with relevant code** before starting work on a task.
+
+- **Interaction and Responses** 
+    - format your reponses so that they are easy to read: left margin of 10 chars, 120 chars long lines, no more. 
+    - put new lines between phrases 
+    - use bullet point lists for enumerating things

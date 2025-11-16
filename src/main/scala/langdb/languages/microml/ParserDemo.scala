@@ -1,7 +1,8 @@
-package langdb.languages.microml.parser
+package langdb.languages.microml
 
 import cats.effect.IO
 import cats.syntax.all.*
+import langdb.languages.microml.parser.MicroMLParser
 import langdb.languages.microml.typechecker.TypeChecker
 
 object ParserDemo:

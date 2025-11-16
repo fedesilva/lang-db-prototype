@@ -1,51 +1,55 @@
-package langdb.languages.microml.ast
+package langdb.languages.microml
 
 import cats.effect.IO
 import cats.syntax.all.*
+import langdb.languages.microml.ast.{DependencyAnalyzer, Term, Type}
+import langdb.languages.microml.parser.MicroMLParser
 import langdb.languages.microml.typechecker.TypeChecker
 
 object LambdaCalculusDemo:
 
-  // Example terms to demonstrate the lambda calculus
-  def examples(): List[(String, Term)] = List(
-    // Simple identity function: λx:Int. x
-    ("identity", Term.Lambda("x", Type.IntType, Term.Var("x"))),
+  private case class ExampleSpec(name: String, source: String, expectedTerm: Term)
 
-    // Constant function: λx:Int. 42
-    ("constant", Term.Lambda("x", Type.IntType, Term.IntLit(42))),
-
-    // Addition function: λx:Int. λy:Int. x + y
-    (
+  private val exampleSpecs: List[ExampleSpec] = List(
+    ExampleSpec(
+      "identity",
+      "fn x: Int => x",
+      Term.Lambda("x", Type.IntType, Term.Var("x"))
+    ),
+    ExampleSpec(
+      "constant",
+      "fn x: Int => 42",
+      Term.Lambda("x", Type.IntType, Term.IntLit(42))
+    ),
+    ExampleSpec(
       "add",
+      "fn x: Int => fn y: Int => x + y",
       Term.Lambda(
         "x",
         Type.IntType,
         Term.Lambda("y", Type.IntType, Term.Add(Term.Var("x"), Term.Var("y")))
       )
     ),
-
-    // Application: (λx:Int. x + 1) 5
-    (
+    ExampleSpec(
       "addOne",
+      "(fn x: Int => x + 1) 5",
       Term.App(
         Term.Lambda("x", Type.IntType, Term.Add(Term.Var("x"), Term.IntLit(1))),
         Term.IntLit(5)
       )
     ),
-
-    // Let binding: let double = λx:Int. x + x in double 3
-    (
+    ExampleSpec(
       "letExample",
+      "let double = fn x: Int => x + x in double 3",
       Term.Let(
         "double",
         Term.Lambda("x", Type.IntType, Term.Add(Term.Var("x"), Term.Var("x"))),
         Term.App(Term.Var("double"), Term.IntLit(3))
       )
     ),
-
-    // Conditional: λx:Int. if (x == 0) then 1 else x
-    (
+    ExampleSpec(
       "conditional",
+      "fn x: Int => if x == 0 then 1 else x",
       Term.Lambda(
         "x",
         Type.IntType,
@@ -56,10 +60,28 @@ object LambdaCalculusDemo:
         )
       )
     ),
-
-    // Free variable example: λx:Int. x + y (y is free)
-    ("freeVar", Term.Lambda("x", Type.IntType, Term.Add(Term.Var("x"), Term.Var("y"))))
+    ExampleSpec(
+      "freeVar",
+      "fn x: Int => x + y",
+      Term.Lambda("x", Type.IntType, Term.Add(Term.Var("x"), Term.Var("y")))
+    )
   )
+
+  // Example terms to demonstrate the lambda calculus, sourced via the MicroML parser
+  def examples(): List[(String, Term)] =
+    exampleSpecs.map { spec =>
+      val parsedTerm = MicroMLParser.parse(spec.source) match
+        case Right(term) => term
+        case Left(error) =>
+          throw new IllegalStateException(
+            s"Failed to parse example '${spec.name}':\n${spec.source}\n$error"
+          )
+      require(
+        parsedTerm == spec.expectedTerm,
+        s"Parser produced unexpected AST for '${spec.name}'. Expected: ${spec.expectedTerm}, got: $parsedTerm"
+      )
+      (spec.name, parsedTerm)
+    }
 
   def demo(): IO[Unit] =
     for {

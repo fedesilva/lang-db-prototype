@@ -24,7 +24,7 @@
 
 * [DONE] revisit `Term.Print`/`Term.Println` typing to ensure they use `String -> Unit` (introduce `Type.UnitType`/`Term.UnitLit`) or document why they currently return strings
 
-* replace the lambda calculus demo 
+* [DONE] replace the lambda calculus demo 
     - implement the example using MicroML directly
         - write the equivalent source to the current programatically built ast.
     - call the parser
@@ -46,5 +46,4 @@
     - first, walk the ast, write into db
         - validate
     - second, try to just parse directly into the db
-
 

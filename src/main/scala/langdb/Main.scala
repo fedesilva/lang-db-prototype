@@ -1,8 +1,7 @@
 package langdb
 
 import cats.effect.{IO, IOApp}
-import langdb.languages.microml.ast.LambdaCalculusDemo
-import langdb.languages.microml.parser.ParserDemo
+import langdb.languages.microml.{LambdaCalculusDemo, ParserDemo}
 
 object Main extends IOApp.Simple {
   def run: IO[Unit] =
