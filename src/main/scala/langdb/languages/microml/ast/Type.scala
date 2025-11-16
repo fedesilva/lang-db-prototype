@@ -5,4 +5,5 @@ enum Type derives CanEqual:
   case IntType
   case StringType
   case BoolType
+  case UnitType
   case FunctionType(from: Type, to: Type)

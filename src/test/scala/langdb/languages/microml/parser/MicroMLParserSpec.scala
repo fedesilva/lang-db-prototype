@@ -233,9 +233,106 @@ class MicroMLParserSpec extends FunSuite:
   }
 
   test("parse operators with correct associativity") {
+
     val result = MicroMLParser.parse("1 + 2 + 3")
+
     assertEquals(
       result,
       Right(Term.Add(Term.Add(Term.IntLit(1), Term.IntLit(2)), Term.IntLit(3)))
     )
+
+  }
+
+  test("parse unit literal") {
+
+    val result = MicroMLParser.parse("()")
+
+    assertEquals(result, Right(Term.UnitLit))
+
+  }
+
+  test("typecheck unit literal") {
+
+    import cats.effect.unsafe.implicits.global
+
+    import langdb.languages.microml.typechecker.TypeChecker
+
+    val term = Term.UnitLit
+
+    val result = TypeChecker.typeCheck(term).unsafeRunSync()
+
+    assertEquals(result, Type.UnitType)
+
+  }
+
+  test("parse and typecheck println expression") {
+
+    import cats.effect.unsafe.implicits.global
+
+    import langdb.languages.microml.typechecker.TypeChecker
+
+    val code = "println \"hello\""
+
+    val parsed = MicroMLParser.parse(code)
+
+    assert(parsed.isRight, "Parsing failed")
+
+    val typeChecked = TypeChecker.typeCheck(parsed.getOrElse(null)).unsafeRunSync()
+
+    assertEquals(typeChecked, Type.UnitType)
+
+  }
+
+  test("parse and typecheck a function returning unit") {
+
+    import cats.effect.unsafe.implicits.global
+
+    import langdb.languages.microml.typechecker.TypeChecker
+
+    val code = "fn x: String => println x"
+
+    val parsed = MicroMLParser.parse(code)
+
+    assert(parsed.isRight, "Parsing failed")
+
+    val typeChecked = TypeChecker.typeCheck(parsed.getOrElse(null)).unsafeRunSync()
+
+    assertEquals(typeChecked, Type.FunctionType(Type.StringType, Type.UnitType))
+
+  }
+
+  test("parse and typecheck a let binding with a unit value") {
+
+    import cats.effect.unsafe.implicits.global
+
+    import langdb.languages.microml.typechecker.TypeChecker
+
+    val code = "let u = () in u"
+
+    val parsed = MicroMLParser.parse(code)
+
+    assert(parsed.isRight, "Parsing failed")
+
+    val typeChecked = TypeChecker.typeCheck(parsed.getOrElse(null)).unsafeRunSync()
+
+    assertEquals(typeChecked, Type.UnitType)
+
+  }
+
+  test("parse and typecheck if expression returning unit") {
+
+    import cats.effect.unsafe.implicits.global
+
+    import langdb.languages.microml.typechecker.TypeChecker
+
+    val code = "if true then () else ()"
+
+    val parsed = MicroMLParser.parse(code)
+
+    assert(parsed.isRight, "Parsing failed")
+
+    val typeChecked = TypeChecker.typeCheck(parsed.getOrElse(null)).unsafeRunSync()
+
+    assertEquals(typeChecked, Type.UnitType)
+
   }

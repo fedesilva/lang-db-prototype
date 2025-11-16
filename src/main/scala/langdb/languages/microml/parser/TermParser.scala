@@ -24,6 +24,7 @@ private[microml] object TermParser:
       "Int".!.map(_ => Type.IntType) |
         "String".!.map(_ => Type.StringType) |
         "Bool".!.map(_ => Type.BoolType) |
+        "Unit".!.map(_ => Type.UnitType) |
         ("(" ~ typeExpr ~ ")")
     )
 
@@ -51,6 +52,8 @@ private[microml] object TermParser:
   def boolLit[$: P]: P[Term] =
     P("true".!.map(_ => Term.BoolLit(true)) | "false".!.map(_ => Term.BoolLit(false)))
 
+  def unitLit[$: P]: P[Term] = P("()".!).map(_ => Term.UnitLit)
+
   // Atomic expressions (highest precedence)
   def atom[$: P]: P[Term] =
     P(
@@ -60,6 +63,7 @@ private[microml] object TermParser:
         intLit |
         stringLit |
         boolLit |
+        unitLit |
         identifier.map(Term.Var.apply) |
         ("(" ~ expr ~ ")")
     )

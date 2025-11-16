@@ -29,3 +29,4 @@ enum Term derives CanEqual:
   case StringConcat(left: Term, right: Term)
   case Print(operand: Term)
   case Println(operand: Term)
+  case UnitLit

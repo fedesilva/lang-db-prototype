@@ -82,7 +82,7 @@ object DependencyAnalyzer:
       case Term.Println(operand) =>
         analyzeWithContext(operand, graph)
 
-      case Term.IntLit(_) | Term.StringLit(_) | Term.BoolLit(_) =>
+      case Term.IntLit(_) | Term.StringLit(_) | Term.BoolLit(_) | Term.UnitLit =>
         graph
 
   private def analyzeBinary(left: Term, right: Term, graph: DependencyGraph): DependencyGraph =

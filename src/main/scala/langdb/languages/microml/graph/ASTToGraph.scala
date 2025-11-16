@@ -115,6 +115,11 @@ object ASTToGraph:
       case Term.Println(operand) =>
         convertUnaryOp("Println", operand, builder)
 
+      case Term.UnitLit =>
+        val id = freshId()
+        builder.addNode(ASTNode(id, "UnitLit", Map.empty))
+        id
+
   private def convertBinaryOp(
     opName:  String,
     left:    Term,

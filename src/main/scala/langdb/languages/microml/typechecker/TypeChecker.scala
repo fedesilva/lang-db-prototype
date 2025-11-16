@@ -105,12 +105,14 @@ object TypeChecker:
       case Term.Print(operand) =>
         typeCheckWithContext(operand, ctx)
           .flatMap(ensureType(_, Type.StringType))
-          .as(Type.StringType)
+          .as(Type.UnitType)
 
       case Term.Println(operand) =>
         typeCheckWithContext(operand, ctx)
           .flatMap(ensureType(_, Type.StringType))
-          .as(Type.StringType)
+          .as(Type.UnitType)
+
+      case Term.UnitLit => IO.pure(Type.UnitType)
 
   private def ensureType(actual: Type, expected: Type): IO[Unit] =
     if actual == expected then IO.unit
