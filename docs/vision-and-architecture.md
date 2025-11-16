@@ -166,7 +166,7 @@ graph.
   compiled
 - Unused code is never visited, never emitted—true zero-cost abstraction
 
-## Graph Structure Details
+## Graph Structure Draft
 
 ### Nodes and Edges
 

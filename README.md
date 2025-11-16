@@ -6,34 +6,38 @@ A prototype exploring graph-based intermediate representations for multiple prog
 
 ## Overview
 
-This project investigates whether a generic graph database can serve as shared infrastructure for
-representing different programming languages. The core idea: use immutable graphs as the intermediate
-representation, with each compilation phase creating new graph layers connected via provenance edges.
+This project investigates whether an interaction network-based intermediate representation can
+serve as shared infrastructure for multiple programming languages—both functional and imperative.
 
-The plan is to implement two languages—one functional, one imperative—to explore what infrastructure can
-be shared:
+The implementation uses immutable graphs as the IR, with each compilation phase creating new graph
+layers connected via provenance edges. This allows non-destructive transformations while maintaining
+perfect traceability from optimized code back to source.
 
-*   **MicroML:** A small ML-like language ( Simple Typed Lambda Calculus ). Currently implemented.
-*   **NanoProc:** A small imperative language. In the works.
+The plan is to implement two languages—one functional, one imperative—to explore what infrastructure
+can be shared:
+
+*   **MicroML:** A small ML-like language (Simple Typed Lambda Calculus). **Fully implemented.**
+*   **NanoProc:** A small imperative language. **Fully implemented.**
 
 What exists today:
 
 *   **Generic Graph API:** Node/edge representation with bidirectional traversal
 *   **Apache Arrow Serialization:** Columnar storage for the graph structures
-*   **Basic Analyses:** Type checking, dependency analysis
+*   **Traditional Analyses:** Type checking and dependency analysis using classic in-heap AST techniques
 
-**Current state:** MicroML parses to native Scala AST structures, which are then converted to the generic
-graph representation for serialization. Analyses currently operate on the traditional heap-based AST.
+**Current state:** Both languages parse to native Scala AST structures, which are then converted to the generic
+graph representation for serialization. Type checking and analyses currently operate on traditional heap-based
+ASTs using standard compiler techniques.
 
 **The approach:** By implementing both languages with traditional ParseTree/AST/IR structures first, we can
 observe what differs and what can be shared. Graph-direct operations will be "grown" from these
 observations, then we'll migrate the traditional structures into the graph. See
-`docs/vision-and-architecture.md` for the vision.
+[vision-and-architecture.md](docs/vision-and-architecture.md) for the vision.
 
 ## Documentation
 
-- `docs/vision-and-architecture.md` - Long-term vision and architectural approach
-- `docs/graph-api.md` - Current graph API implementation details
+- [vision-and-architecture.md](docs/vision-and-architecture.md) - Long-term vision and architectural approach
+- [graph-api.md](docs/graph-api.md) - Current graph API implementation details
 
 ## Dependencies
 
@@ -60,9 +64,11 @@ sbt scalafmtAll
 sbt scalafixAll
 ```
 
-## MicroML Language
+## Languages
 
-MicroML is a small ML-like language used as the first test case:
+### MicroML (Functional)
+
+A small ML-like language implementing simply typed lambda calculus:
 
 **Syntax:**
 ```ocaml
@@ -73,16 +79,63 @@ fn x: Int => x + 1
 let double = fn x: Int => x + x in double 5
 
 // Literals and operators
-42, "hello", true
-x + y, x == y, x && y
+42, "hello", true, ()
+x + y, x * y, x == y, x && y
 
 // Conditionals
 if x == 0 then 1 else x
 ```
 
 **Type System:**
-- Base types: `Int`, `String`, `Bool`
+- Base types: `Int`, `String`, `Bool`, `Unit`
 - Function types: `A -> B`
+- Higher-order functions
 - Simply typed lambda calculus with explicit type annotations (no inference)
 
-The implementation includes a FastParse-based parser, type checker, and basic dependency analysis.
+**Implementation:**
+- FastParse-based parser
+- Type checker with traditional AST traversal
+- Dependency analysis
+- Comprehensive test suite (82 tests)
+
+### NanoProc (Imperative)
+
+A small imperative language for exploring procedural programming:
+
+**Syntax:**
+```c
+// Variable declarations and assignment
+var x: Int = 42;
+x = x + 1;
+
+// Procedures
+proc factorial(n: Int): Int {
+  var result: Int = 1;
+  var i: Int = n;
+  while (i > 0) {
+    result = result * i;
+    i = i - 1;
+  }
+  return result;
+}
+
+// Control flow
+if (x > 0) {
+  println("positive");
+} else {
+  println("non-positive");
+}
+```
+
+**Type System:**
+- Base types: `Int`, `String`, `Bool`, `Unit`
+- Procedures (not first-class)
+- Mutable variables
+- Explicit type annotations
+
+**Implementation:**
+- FastParse-based parser
+- Type checker with procedure signature validation and return checking
+- Comprehensive test suite (65 tests)
+
+For full specification, see [nanoproc-spec.md](docs/nanoproc-spec.md).
