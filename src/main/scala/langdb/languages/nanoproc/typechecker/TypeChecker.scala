@@ -79,8 +79,8 @@ object TypeChecker:
 
   def blockHasReturn(block: Stmt.Block): Boolean =
     block.stmts.exists {
-      case Stmt.Return(_) => true
-      case Stmt.If(_, thenBlock, Some(elseBlock)) =>
+      case Stmt.Return(_, _) => true
+      case Stmt.If(_, thenBlock, Some(elseBlock), _) =>
         blockHasReturn(thenBlock) && blockHasReturn(elseBlock)
       case _ => false
     }
@@ -100,13 +100,13 @@ object TypeChecker:
     expectedReturn: Option[Type]
   ): IO[TypeContext] =
     stmt match
-      case Stmt.VarDecl(name, typ, init) =>
+      case Stmt.VarDecl(name, typ, init, _) =>
         for
           initType <- typeCheckExpr(init, ctx)
           _ <- ensureType(initType, typ)
         yield ctx.bindVar(name, typ)
 
-      case Stmt.Assign(name, value) =>
+      case Stmt.Assign(name, value, _) =>
         for
           varType <- ctx.lookupVar(name) match
             case Some(t) => IO.pure(t)
@@ -115,10 +115,10 @@ object TypeChecker:
           _ <- ensureType(valueType, varType)
         yield ctx
 
-      case Stmt.ExprStmt(expr) =>
+      case Stmt.ExprStmt(expr, _) =>
         typeCheckExpr(expr, ctx).as(ctx)
 
-      case Stmt.Return(value) =>
+      case Stmt.Return(value, _) =>
         for
           valueType <- typeCheckExpr(value, ctx)
           _ <- expectedReturn match
@@ -126,7 +126,7 @@ object TypeChecker:
             case None => IO.raiseError(new TypeError { def message = "Return outside procedure" })
         yield ctx
 
-      case Stmt.If(cond, thenBlock, elseBlock) =>
+      case Stmt.If(cond, thenBlock, elseBlock, _) =>
         for
           condType <- typeCheckExpr(cond, ctx)
           _ <- ensureType(condType, Type.BoolType)
@@ -134,41 +134,41 @@ object TypeChecker:
           _ <- elseBlock.traverse_(block => typeCheckBlock(block, ctx, expectedReturn))
         yield ctx
 
-      case Stmt.While(cond, body) =>
+      case Stmt.While(cond, body, _) =>
         for
           condType <- typeCheckExpr(cond, ctx)
           _ <- ensureType(condType, Type.BoolType)
           _ <- typeCheckBlock(body, ctx, expectedReturn)
         yield ctx
 
-      case Stmt.Block(stmts) =>
-        typeCheckBlock(Stmt.Block(stmts), ctx, expectedReturn).as(ctx)
+      case Stmt.Block(stmts, span) =>
+        typeCheckBlock(Stmt.Block(stmts, span), ctx, expectedReturn).as(ctx)
 
   def typeCheckExpr(expr: Expr, ctx: TypeContext): IO[Type] =
     expr match
-      case Expr.Var(name) =>
+      case Expr.Var(name, _) =>
         ctx.lookupVar(name) match
           case Some(typ) => IO.pure(typ)
           case None => IO.raiseError(UnboundVariable(name))
 
-      case Expr.IntLit(_) => IO.pure(Type.IntType)
-      case Expr.StringLit(_) => IO.pure(Type.StringType)
-      case Expr.BoolLit(_) => IO.pure(Type.BoolType)
-      case Expr.UnitLit => IO.pure(Type.UnitType)
+      case Expr.IntLit(_, _) => IO.pure(Type.IntType)
+      case Expr.StringLit(_, _) => IO.pure(Type.StringType)
+      case Expr.BoolLit(_, _) => IO.pure(Type.BoolType)
+      case Expr.UnitLit(_) => IO.pure(Type.UnitType)
 
-      case Expr.Add(left, right) =>
+      case Expr.Add(left, right, _) =>
         checkNumericBinary(left, right, ctx).as(Type.IntType)
 
-      case Expr.Sub(left, right) =>
+      case Expr.Sub(left, right, _) =>
         checkNumericBinary(left, right, ctx).as(Type.IntType)
 
-      case Expr.Mult(left, right) =>
+      case Expr.Mult(left, right, _) =>
         checkNumericBinary(left, right, ctx).as(Type.IntType)
 
-      case Expr.Div(left, right) =>
+      case Expr.Div(left, right, _) =>
         checkNumericBinary(left, right, ctx).as(Type.IntType)
 
-      case Expr.Eq(left, right) =>
+      case Expr.Eq(left, right, _) =>
         for
           leftType <- typeCheckExpr(left, ctx)
           rightType <- typeCheckExpr(right, ctx)
@@ -177,19 +177,19 @@ object TypeChecker:
             else IO.raiseError(TypeMismatch(leftType, rightType))
         yield Type.BoolType
 
-      case Expr.Gt(left, right) =>
+      case Expr.Gt(left, right, _) =>
         checkNumericBinary(left, right, ctx).as(Type.BoolType)
 
-      case Expr.Lt(left, right) =>
+      case Expr.Lt(left, right, _) =>
         checkNumericBinary(left, right, ctx).as(Type.BoolType)
 
-      case Expr.Gte(left, right) =>
+      case Expr.Gte(left, right, _) =>
         checkNumericBinary(left, right, ctx).as(Type.BoolType)
 
-      case Expr.Lte(left, right) =>
+      case Expr.Lte(left, right, _) =>
         checkNumericBinary(left, right, ctx).as(Type.BoolType)
 
-      case Expr.And(left, right) =>
+      case Expr.And(left, right, _) =>
         for
           leftType <- typeCheckExpr(left, ctx)
           _ <- ensureType(leftType, Type.BoolType)
@@ -197,13 +197,13 @@ object TypeChecker:
           _ <- ensureType(rightType, Type.BoolType)
         yield Type.BoolType
 
-      case Expr.Not(operand) =>
+      case Expr.Not(operand, _) =>
         typeCheckExpr(operand, ctx).flatMap(ensureType(_, Type.BoolType)).as(Type.BoolType)
 
-      case Expr.StringConcat(left, right) =>
+      case Expr.StringConcat(left, right, _) =>
         checkStringBinary(left, right, ctx).as(Type.StringType)
 
-      case Expr.ProcCall(name, args) =>
+      case Expr.ProcCall(name, args, _) =>
         ctx.lookupProc(name) match
           case Some(sig) =>
             if sig.paramTypes.length != args.length then
@@ -217,12 +217,12 @@ object TypeChecker:
               yield sig.returnType
           case None => IO.raiseError(UnboundProcedure(name))
 
-      case Expr.Print(operand) =>
+      case Expr.Print(operand, _) =>
         typeCheckExpr(operand, ctx)
           .flatMap(ensureType(_, Type.StringType))
           .as(Type.UnitType)
 
-      case Expr.Println(operand) =>
+      case Expr.Println(operand, _) =>
         typeCheckExpr(operand, ctx)
           .flatMap(ensureType(_, Type.StringType))
           .as(Type.UnitType)

@@ -23,10 +23,12 @@
 ## Tasks
 
 
-* parsers and asts: track and store SourceSpans(line, col, charindex)
+* [DONE] parsers and asts: track and store SourceSpans(line, col, charindex)
     - for provenance, later
     - for completeness
     - test
+    - Implementation: SourceSpan type, both parsers capture positions, all ASTs updated
+    - Codebase made purely functional (removed var, ThreadLocal, mutable collections)
 
 * update the graph to be capable of storing arbitrary (the two languages) languages.
     - design task:

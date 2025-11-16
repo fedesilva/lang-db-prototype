@@ -1,21 +1,27 @@
 package langdb.languages.nanoproc.parser
 
 import fastparse.*
+import langdb.common.SourceSpan
 import langdb.languages.nanoproc.ast.{Expr, Program, ProcDef, Stmt, Type}
 
 import MultiLineWhitespace.*
 
-/** Parser for NanoProc, a small imperative language.
-  *
-  * Syntax:
-  *   - Variable declarations: var x: Int = 42;
-  *   - Assignment: x = x + 1;
-  *   - Procedures: proc name(x: Int, y: Int): Int { ... }
-  *   - Control flow: if (cond) { ... } else { ... }, while (cond) { ... }
-  *   - Literals: 42, "hello", true, false, ()
-  *   - Operators: +, *, ==, &&, not, ++
-  */
-private[nanoproc] object ProgramParser:
+/** Parser for NanoProc, a small imperative language. */
+private[nanoproc] class ProgramParserInstance(input: String, source: String):
+
+  private def makeSpan(start: Int, end: Int): SourceSpan =
+    SourceSpan.fromIndices(source, input, start, end)
+
+  // Helpers to capture source spans
+  def withSpanExpr[$: P, T](p: => P[T])(f: (T, SourceSpan) => Expr): P[Expr] =
+    P(Index ~ p ~ Index).map { case (start, result, end) =>
+      f(result, makeSpan(start, end))
+    }
+
+  def withSpanStmt[$: P, T](p: => P[T])(f: (T, SourceSpan) => Stmt): P[Stmt] =
+    P(Index ~ p ~ Index).map { case (start, result, end) =>
+      f(result, makeSpan(start, end))
+    }
 
   // Type parsers
   def baseType[$: P]: P[Type] =
@@ -51,15 +57,22 @@ private[nanoproc] object ProgramParser:
   // Literal parsers
   def intLit[$: P]: P[Expr] =
     import NoWhitespace.*
-    P(CharIn("0-9").rep(1).!.map(s => Expr.IntLit(s.toInt)))
+    withSpanExpr(CharIn("0-9").rep(1).!)((s, span) => Expr.IntLit(s.toInt, span))
 
   def stringLit[$: P]: P[Expr] =
-    P("\"" ~ CharsWhile(_ != '"').! ~ "\"").map(Expr.StringLit.apply)
+    withSpanExpr("\"" ~ CharsWhile(_ != '"').! ~ "\"")((s, span) => Expr.StringLit(s, span))
 
   def boolLit[$: P]: P[Expr] =
-    P("true".!.map(_ => Expr.BoolLit(true)) | "false".!.map(_ => Expr.BoolLit(false)))
+    withSpanExpr(P("true").!.map(_ => true) | P("false").!.map(_ => false))((b, span) =>
+      Expr.BoolLit(b, span)
+    )
 
-  def unitLit[$: P]: P[Expr] = P("()".!).map(_ => Expr.UnitLit)
+  def unitLit[$: P]: P[Expr] =
+    withSpanExpr("()".!)((_, span) => Expr.UnitLit(span))
+
+  // Variables
+  def varExpr[$: P]: P[Expr] =
+    withSpanExpr(identifier)((name, span) => Expr.Var(name, span))
 
   // Atomic expressions
   def atom[$: P]: P[Expr] =
@@ -69,71 +82,81 @@ private[nanoproc] object ProgramParser:
         boolLit |
         unitLit |
         procCall |
-        identifier.map(Expr.Var.apply) |
+        varExpr |
         ("(" ~ expr ~ ")")
     )
 
   // Procedure call: name(arg1, arg2, ...)
   def procCall[$: P]: P[Expr] =
-    P(identifier ~ "(" ~ expr.rep(0, ",") ~ ")").map { case (name, args) =>
-      Expr.ProcCall(name, args.toList)
+    withSpanExpr(identifier ~ "(" ~ expr.rep(0, ",") ~ ")") { case ((name, args), span) =>
+      Expr.ProcCall(name, args.toList, span)
     }
 
   // Unary operators: not, print, println
   def unary[$: P]: P[Expr] =
     P(
-      ("not" ~~ !(CharIn("a-zA-Z0-9_")) ~ unary).map(Expr.Not.apply) |
-        ("println" ~~ !(CharIn("a-zA-Z0-9_")) ~ "(" ~ expr ~ ")").map(Expr.Println.apply) |
-        ("print" ~~ !(CharIn("a-zA-Z0-9_")) ~ "(" ~ expr ~ ")").map(Expr.Print.apply) |
+      withSpanExpr("not" ~~ !(CharIn("a-zA-Z0-9_")) ~ unary)((operand, span) =>
+        Expr.Not(operand, span)
+      ) |
+        withSpanExpr("println" ~~ !(CharIn("a-zA-Z0-9_")) ~ "(" ~ expr ~ ")")((operand, span) =>
+          Expr.Println(operand, span)
+        ) |
+        withSpanExpr("print" ~~ !(CharIn("a-zA-Z0-9_")) ~ "(" ~ expr ~ ")")((operand, span) =>
+          Expr.Print(operand, span)
+        ) |
         atom
     )
 
   // Multiplicative operators: *, /
   def multiplicative[$: P]: P[Expr] =
-    P(unary ~ (("*" ~ unary).map(("*", _)) | ("/" ~ unary).map(("/", _))).rep).map {
-      case (first, rest) =>
+    P(Index ~ unary ~ (("*" ~ unary).map(("*", _)) | ("/" ~ unary).map(("/", _))).rep ~ Index).map {
+      case (start, first, rest, end) =>
+        val span = makeSpan(start, end)
         rest.foldLeft(first) { case (left, (op, right)) =>
-          if op == "*" then Expr.Mult(left, right)
-          else Expr.Div(left, right)
+          if op == "*" then Expr.Mult(left, right, span)
+          else Expr.Div(left, right, span)
         }
     }
 
   // Additive operators: +, -, ++
   def additive[$: P]: P[Expr] =
     P(
-      multiplicative ~ (("++" ~ multiplicative).map(("++", _)) | ("+" ~ multiplicative).map(
+      Index ~ multiplicative ~ (("++" ~ multiplicative).map(("++", _)) | ("+" ~ multiplicative).map(
         ("+", _)
-      ) | ("-" ~ multiplicative).map(("-", _))).rep
-    ).map { case (first, rest) =>
+      ) | ("-" ~ multiplicative).map(("-", _))).rep ~ Index
+    ).map { case (start, first, rest, end) =>
+      val span = makeSpan(start, end)
       rest.foldLeft(first) { case (left, (op, right)) =>
-        if op == "+" then Expr.Add(left, right)
-        else if op == "-" then Expr.Sub(left, right)
-        else Expr.StringConcat(left, right)
+        if op == "+" then Expr.Add(left, right, span)
+        else if op == "-" then Expr.Sub(left, right, span)
+        else Expr.StringConcat(left, right, span)
       }
     }
 
   // Comparison operators: ==, >, <, >=, <=
   def comparison[$: P]: P[Expr] =
     P(
-      additive ~ (("<=" ~ additive).map(("<=", _)) |
+      Index ~ additive ~ (("<=" ~ additive).map(("<=", _)) |
         (">=" ~ additive).map((">=", _)) |
         ("==" ~ additive).map(("==", _)) |
         ("<" ~ additive).map(("<", _)) |
-        (">" ~ additive).map((">", _))).?
-    ).map {
-      case (left, Some(("==", right))) => Expr.Eq(left, right)
-      case (left, Some((">", right))) => Expr.Gt(left, right)
-      case (left, Some(("<", right))) => Expr.Lt(left, right)
-      case (left, Some((">=", right))) => Expr.Gte(left, right)
-      case (left, Some(("<=", right))) => Expr.Lte(left, right)
-      case (term, None) => term
-      case (_, Some((op, _))) => throw new RuntimeException(s"Unknown operator: $op")
+        (">" ~ additive).map((">", _))).? ~ Index
+    ).map { case (start, left, maybeRight, end) =>
+      maybeRight match
+        case Some(("==", right)) => Expr.Eq(left, right, makeSpan(start, end))
+        case Some((">", right)) => Expr.Gt(left, right, makeSpan(start, end))
+        case Some(("<", right)) => Expr.Lt(left, right, makeSpan(start, end))
+        case Some((">=", right)) => Expr.Gte(left, right, makeSpan(start, end))
+        case Some(("<=", right)) => Expr.Lte(left, right, makeSpan(start, end))
+        case Some((op, _)) => throw new RuntimeException(s"Unknown operator: $op")
+        case None => left
     }
 
   // Logical operators: &&
   def logical[$: P]: P[Expr] =
-    P(comparison ~ ("&&" ~ comparison).rep).map { case (first, rest) =>
-      rest.foldLeft(first)((left, right) => Expr.And(left, right))
+    P(Index ~ comparison ~ ("&&" ~ comparison).rep ~ Index).map { case (start, first, rest, end) =>
+      val span = makeSpan(start, end)
+      rest.foldLeft(first)((left, right) => Expr.And(left, right, span))
     }
 
   // Top-level expression parser
@@ -143,39 +166,42 @@ private[nanoproc] object ProgramParser:
 
   // Variable declaration: var x: Int = 42;
   def varDecl[$: P]: P[Stmt] =
-    P("var" ~ identifier ~ ":" ~ typeExpr ~ "=" ~ expr ~ ";").map { case (name, typ, init) =>
-      Stmt.VarDecl(name, typ, init)
+    withSpanStmt("var" ~ identifier ~ ":" ~ typeExpr ~ "=" ~ expr ~ ";") {
+      case ((name, typ, init), span) =>
+        Stmt.VarDecl(name, typ, init, span)
     }
 
   // Assignment: x = expr;
   def assign[$: P]: P[Stmt] =
-    P(identifier ~ "=" ~ expr ~ ";").map { case (name, value) =>
-      Stmt.Assign(name, value)
+    withSpanStmt(identifier ~ "=" ~ expr ~ ";") { case ((name, value), span) =>
+      Stmt.Assign(name, value, span)
     }
 
   // Expression statement: println("hello");
   def exprStmt[$: P]: P[Stmt] =
-    P(expr ~ ";").map(Stmt.ExprStmt.apply)
+    withSpanStmt(expr ~ ";")((expr, span) => Stmt.ExprStmt(expr, span))
 
   // Return statement: return expr;
   def returnStmt[$: P]: P[Stmt] =
-    P("return" ~ expr ~ ";").map(Stmt.Return.apply)
+    withSpanStmt("return" ~ expr ~ ";")((value, span) => Stmt.Return(value, span))
 
   // Block: { stmt1 stmt2 ... }
   def block[$: P]: P[Stmt.Block] =
-    P("{" ~ stmt.rep ~ "}").map(stmts => Stmt.Block(stmts.toList))
+    P(Index ~ "{" ~ stmt.rep ~ "}" ~ Index).map { case (start, stmts, end) =>
+      Stmt.Block(stmts.toList, makeSpan(start, end))
+    }
 
   // If statement: if (cond) { ... } else { ... }
   def ifStmt[$: P]: P[Stmt] =
-    P("if" ~ "(" ~ expr ~ ")" ~ block ~ ("else" ~ block).?).map {
-      case (cond, thenBlock, elseBlock) =>
-        Stmt.If(cond, thenBlock, elseBlock)
+    withSpanStmt("if" ~ "(" ~ expr ~ ")" ~ block ~ ("else" ~ block).?) {
+      case ((cond, thenBlock, elseBlock), span) =>
+        Stmt.If(cond, thenBlock, elseBlock, span)
     }
 
   // While loop: while (cond) { ... }
   def whileStmt[$: P]: P[Stmt] =
-    P("while" ~ "(" ~ expr ~ ")" ~ block).map { case (cond, body) =>
-      Stmt.While(cond, body)
+    withSpanStmt("while" ~ "(" ~ expr ~ ")" ~ block) { case ((cond, body), span) =>
+      Stmt.While(cond, body, span)
     }
 
   // Statement (order matters for disambiguation)
@@ -195,17 +221,21 @@ private[nanoproc] object ProgramParser:
 
   // Procedure definition: proc name(x: Int, y: Int): RetType { ... }
   def procDef[$: P]: P[ProcDef] =
-    P("proc" ~ identifier ~ "(" ~ param.rep(0, ",") ~ ")" ~ ":" ~ typeExpr ~ block).map {
-      case (name, params, returnType, body) =>
-        ProcDef(name, params.toList, returnType, body)
-    }
+    P(Index ~ "proc" ~ identifier ~ "(" ~ param.rep(0, ",") ~ ")" ~ ":" ~ typeExpr ~ block ~ Index)
+      .map { case (start, name, params, returnType, body, end) =>
+        ProcDef(name, params.toList, returnType, body, makeSpan(start, end))
+      }
 
   // Complete program: one or more procedure definitions
   def program[$: P]: P[Program] =
-    P(Start ~ procDef.rep(1) ~ End).map(procs => Program(procs.toList))
+    P(Start ~ Index ~ procDef.rep(1) ~ Index ~ End).map { case (start, procs, end) =>
+      Program(procs.toList, makeSpan(start, end))
+    }
 
+private[nanoproc] object ProgramParser:
   // Parse a string into a Program
-  def parse(input: String): Either[String, Program] =
-    fastparse.parse(input, program(_)) match
+  def parse(input: String, source: String = "<input>"): Either[String, Program] =
+    val instance = ProgramParserInstance(input, source)
+    fastparse.parse(input, instance.program(_)) match
       case Parsed.Success(prog, _) => Right(prog)
       case f: Parsed.Failure => Left(f.trace().longMsg)

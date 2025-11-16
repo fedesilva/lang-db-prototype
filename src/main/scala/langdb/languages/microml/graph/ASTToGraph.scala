@@ -3,157 +3,156 @@ package langdb.languages.microml.graph
 import langdb.graph.{ASTEdge, ASTGraph, ASTNode, NodeId}
 import langdb.languages.microml.ast.Term
 
-import scala.collection.mutable
-
 object ASTToGraph:
 
-  private var nextId: Long = 1L
-
-  private def freshId(): NodeId =
-    val id = NodeId(nextId)
-    nextId += 1
-    id
-
   def convertToGraph(term: Term): ASTGraph =
-    nextId = 1L // reset for consistent IDs
-    val builder = GraphBuilder()
-    convertTerm(term, builder)
-    builder.build()
+    val builder           = GraphBuilder.empty
+    val (_, finalBuilder) = convertTerm(term, builder)
+    finalBuilder.build()
 
-  private def convertTerm(term: Term, builder: GraphBuilder): NodeId =
+  private def convertTerm(term: Term, builder: GraphBuilder): (NodeId, GraphBuilder) =
     term match
-      case Term.Var(name) =>
-        val id = freshId()
-        builder.addNode(ASTNode(id, "Var", Map("name" -> name)))
-        id
+      case Term.Var(name, _) =>
+        val (id, b1) = builder.freshId()
+        val b2       = b1.addNode(ASTNode(id, "Var", Map("name" -> name)))
+        (id, b2)
 
-      case Term.Lambda(param, paramType, body) =>
-        val id     = freshId()
-        val bodyId = convertTerm(body, builder)
-
-        builder.addNode(
-          ASTNode(
-            id,
-            "Lambda",
-            Map(
-              "param" -> param,
-              "paramType" -> paramType.toString
+      case Term.Lambda(param, paramType, body, _) =>
+        val (id, b1)     = builder.freshId()
+        val (bodyId, b2) = convertTerm(body, b1)
+        val b3 = b2
+          .addNode(
+            ASTNode(
+              id,
+              "Lambda",
+              Map(
+                "param" -> param,
+                "paramType" -> paramType.toString
+              )
             )
           )
-        )
-        builder.addEdge(ASTEdge(id, bodyId, "body"))
-        id
+          .addEdge(ASTEdge(id, bodyId, "body"))
+        (id, b3)
 
-      case Term.App(func, arg) =>
-        val id     = freshId()
-        val funcId = convertTerm(func, builder)
-        val argId  = convertTerm(arg, builder)
+      case Term.App(func, arg, _) =>
+        val (id, b1)     = builder.freshId()
+        val (funcId, b2) = convertTerm(func, b1)
+        val (argId, b3)  = convertTerm(arg, b2)
+        val b4 = b3
+          .addNode(ASTNode(id, "App", Map.empty))
+          .addEdge(ASTEdge(id, funcId, "func"))
+          .addEdge(ASTEdge(id, argId, "arg"))
+        (id, b4)
 
-        builder.addNode(ASTNode(id, "App", Map.empty))
-        builder.addEdge(ASTEdge(id, funcId, "func"))
-        builder.addEdge(ASTEdge(id, argId, "arg"))
-        id
+      case Term.Let(name, value, body, _) =>
+        val (id, b1)      = builder.freshId()
+        val (valueId, b2) = convertTerm(value, b1)
+        val (bodyId, b3)  = convertTerm(body, b2)
+        val b4 = b3
+          .addNode(ASTNode(id, "Let", Map("name" -> name)))
+          .addEdge(ASTEdge(id, valueId, "value"))
+          .addEdge(ASTEdge(id, bodyId, "body"))
+        (id, b4)
 
-      case Term.Let(name, value, body) =>
-        val id      = freshId()
-        val valueId = convertTerm(value, builder)
-        val bodyId  = convertTerm(body, builder)
+      case Term.IntLit(value, _) =>
+        val (id, b1) = builder.freshId()
+        val b2       = b1.addNode(ASTNode(id, "IntLit", Map("value" -> value.toString)))
+        (id, b2)
 
-        builder.addNode(ASTNode(id, "Let", Map("name" -> name)))
-        builder.addEdge(ASTEdge(id, valueId, "value"))
-        builder.addEdge(ASTEdge(id, bodyId, "body"))
-        id
+      case Term.StringLit(value, _) =>
+        val (id, b1) = builder.freshId()
+        val b2       = b1.addNode(ASTNode(id, "StringLit", Map("value" -> value)))
+        (id, b2)
 
-      case Term.IntLit(value) =>
-        val id = freshId()
-        builder.addNode(ASTNode(id, "IntLit", Map("value" -> value.toString)))
-        id
+      case Term.BoolLit(value, _) =>
+        val (id, b1) = builder.freshId()
+        val b2       = b1.addNode(ASTNode(id, "BoolLit", Map("value" -> value.toString)))
+        (id, b2)
 
-      case Term.StringLit(value) =>
-        val id = freshId()
-        builder.addNode(ASTNode(id, "StringLit", Map("value" -> value)))
-        id
-
-      case Term.BoolLit(value) =>
-        val id = freshId()
-        builder.addNode(ASTNode(id, "BoolLit", Map("value" -> value.toString)))
-        id
-
-      case Term.Add(left, right) =>
+      case Term.Add(left, right, _) =>
         convertBinaryOp("Add", left, right, builder)
 
-      case Term.Mult(left, right) =>
+      case Term.Mult(left, right, _) =>
         convertBinaryOp("Mult", left, right, builder)
 
-      case Term.Eq(left, right) =>
+      case Term.Eq(left, right, _) =>
         convertBinaryOp("Eq", left, right, builder)
 
-      case Term.And(left, right) =>
+      case Term.And(left, right, _) =>
         convertBinaryOp("And", left, right, builder)
 
-      case Term.StringConcat(left, right) =>
+      case Term.StringConcat(left, right, _) =>
         convertBinaryOp("StringConcat", left, right, builder)
 
-      case Term.If(cond, thenBranch, elseBranch) =>
-        val id     = freshId()
-        val condId = convertTerm(cond, builder)
-        val thenId = convertTerm(thenBranch, builder)
-        val elseId = convertTerm(elseBranch, builder)
+      case Term.If(cond, thenBranch, elseBranch, _) =>
+        val (id, b1)     = builder.freshId()
+        val (condId, b2) = convertTerm(cond, b1)
+        val (thenId, b3) = convertTerm(thenBranch, b2)
+        val (elseId, b4) = convertTerm(elseBranch, b3)
+        val b5 = b4
+          .addNode(ASTNode(id, "If", Map.empty))
+          .addEdge(ASTEdge(id, condId, "cond"))
+          .addEdge(ASTEdge(id, thenId, "then"))
+          .addEdge(ASTEdge(id, elseId, "else"))
+        (id, b5)
 
-        builder.addNode(ASTNode(id, "If", Map.empty))
-        builder.addEdge(ASTEdge(id, condId, "cond"))
-        builder.addEdge(ASTEdge(id, thenId, "then"))
-        builder.addEdge(ASTEdge(id, elseId, "else"))
-        id
-
-      case Term.Not(operand) =>
+      case Term.Not(operand, _) =>
         convertUnaryOp("Not", operand, builder)
 
-      case Term.Print(operand) =>
+      case Term.Print(operand, _) =>
         convertUnaryOp("Print", operand, builder)
 
-      case Term.Println(operand) =>
+      case Term.Println(operand, _) =>
         convertUnaryOp("Println", operand, builder)
 
-      case Term.UnitLit =>
-        val id = freshId()
-        builder.addNode(ASTNode(id, "UnitLit", Map.empty))
-        id
+      case Term.UnitLit(_) =>
+        val (id, b1) = builder.freshId()
+        val b2       = b1.addNode(ASTNode(id, "UnitLit", Map.empty))
+        (id, b2)
 
   private def convertBinaryOp(
     opName:  String,
     left:    Term,
     right:   Term,
     builder: GraphBuilder
-  ): NodeId =
-    val id      = freshId()
-    val leftId  = convertTerm(left, builder)
-    val rightId = convertTerm(right, builder)
+  ): (NodeId, GraphBuilder) =
+    val (id, b1)      = builder.freshId()
+    val (leftId, b2)  = convertTerm(left, b1)
+    val (rightId, b3) = convertTerm(right, b2)
+    val b4 = b3
+      .addNode(ASTNode(id, opName, Map.empty))
+      .addEdge(ASTEdge(id, leftId, "left"))
+      .addEdge(ASTEdge(id, rightId, "right"))
+    (id, b4)
 
-    builder.addNode(ASTNode(id, opName, Map.empty))
-    builder.addEdge(ASTEdge(id, leftId, "left"))
-    builder.addEdge(ASTEdge(id, rightId, "right"))
-    id
+  private def convertUnaryOp(
+    opName:  String,
+    operand: Term,
+    builder: GraphBuilder
+  ): (NodeId, GraphBuilder) =
+    val (id, b1)        = builder.freshId()
+    val (operandId, b2) = convertTerm(operand, b1)
+    val b3 = b2.addNode(ASTNode(id, opName, Map.empty)).addEdge(ASTEdge(id, operandId, "operand"))
+    (id, b3)
 
-  private def convertUnaryOp(opName: String, operand: Term, builder: GraphBuilder): NodeId =
-    val id        = freshId()
-    val operandId = convertTerm(operand, builder)
+private case class GraphBuilder(
+  nodes:  List[ASTNode],
+  edges:  List[ASTEdge],
+  nextId: Long
+):
+  def freshId(): (NodeId, GraphBuilder) =
+    (NodeId(nextId), copy(nextId = nextId + 1))
 
-    builder.addNode(ASTNode(id, opName, Map.empty))
-    builder.addEdge(ASTEdge(id, operandId, "operand"))
-    id
+  def addNode(node: ASTNode): GraphBuilder =
+    copy(nodes = node :: nodes)
 
-private class GraphBuilder:
-  private val nodes = mutable.Map[NodeId, ASTNode]()
-  private val edges = mutable.ListBuffer[ASTEdge]()
-
-  def addNode(node: ASTNode): Unit =
-    nodes += node.id -> node
-
-  def addEdge(edge: ASTEdge): Unit =
-    edges += edge
+  def addEdge(edge: ASTEdge): GraphBuilder =
+    copy(edges = edge :: edges)
 
   def build(): ASTGraph =
     val graph     = ASTGraph.empty
-    val withNodes = nodes.values.foldLeft(graph)(_.addNode(_))
+    val withNodes = nodes.foldLeft(graph)(_.addNode(_))
     edges.foldLeft(withNodes)(_.addEdge(_))
+
+private object GraphBuilder:
+  def empty: GraphBuilder = GraphBuilder(Nil, Nil, 1L)

@@ -4,5 +4,5 @@ import langdb.languages.nanoproc.ast.Program
 
 object NanoProcParser:
 
-  def parse(input: String): Either[String, Program] =
-    ProgramParser.parse(input)
+  def parse(input: String, source: String = "<input>"): Either[String, Program] =
+    ProgramParser.parse(input, source)

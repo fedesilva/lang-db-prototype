@@ -1,6 +1,7 @@
 package langdb.languages.microml.parser
 
 import fastparse.*
+import langdb.common.SourceSpan
 import langdb.languages.microml.ast.{Term, Type}
 
 import MultiLineWhitespace.*
@@ -16,7 +17,16 @@ import MultiLineWhitespace.*
   *   - Conditionals: if cond then e1 else e2
   *   - Types: Int, String, Bool, A -> B
   */
-private[microml] object TermParser:
+private[microml] class TermParserInstance(input: String, source: String):
+
+  private def makeSpan(start: Int, end: Int): SourceSpan =
+    SourceSpan.fromIndices(source, input, start, end)
+
+  // Helper to capture source spans
+  def withSpan[$: P, T](p: => P[T])(f: (T, SourceSpan) => Term): P[Term] =
+    P(Index ~ p ~ Index).map { case (start, result, end) =>
+      f(result, makeSpan(start, end))
+    }
 
   // Type parsers
   def baseType[$: P]: P[Type] =
@@ -44,15 +54,20 @@ private[microml] object TermParser:
   // Literal parsers
   def intLit[$: P]: P[Term] =
     import NoWhitespace.*
-    P(CharIn("0-9").rep(1).!.map(s => Term.IntLit(s.toInt)))
+    withSpan(CharIn("0-9").rep(1).!)((s, span) => Term.IntLit(s.toInt, span))
 
   def stringLit[$: P]: P[Term] =
-    P("\"" ~ CharsWhile(_ != '"').! ~ "\"").map(Term.StringLit.apply)
+    withSpan("\"" ~ CharsWhile(_ != '"').! ~ "\"")((s, span) => Term.StringLit(s, span))
 
   def boolLit[$: P]: P[Term] =
-    P("true".!.map(_ => Term.BoolLit(true)) | "false".!.map(_ => Term.BoolLit(false)))
+    withSpan("true".! | "false".!)((s, span) => Term.BoolLit(s == "true", span))
 
-  def unitLit[$: P]: P[Term] = P("()".!).map(_ => Term.UnitLit)
+  def unitLit[$: P]: P[Term] =
+    withSpan("()".!)((_, span) => Term.UnitLit(span))
+
+  // Variables
+  def varExpr[$: P]: P[Term] =
+    withSpan(identifier)((name, span) => Term.Var(name, span))
 
   // Atomic expressions (highest precedence)
   def atom[$: P]: P[Term] =
@@ -64,73 +79,88 @@ private[microml] object TermParser:
         stringLit |
         boolLit |
         unitLit |
-        identifier.map(Term.Var.apply) |
+        varExpr |
         ("(" ~ expr ~ ")")
     )
 
   // Lambda expressions: fn x: Int => body
   def lambda[$: P]: P[Term] =
-    P("fn" ~ identifier ~ ":" ~ typeExpr ~ "=>" ~ expr).map { case (param, paramType, body) =>
-      Term.Lambda(param, paramType, body)
+    withSpan("fn" ~ identifier ~ ":" ~ typeExpr ~ "=>" ~ expr) {
+      case ((param, paramType, body), span) =>
+        Term.Lambda(param, paramType, body, span)
     }
 
   // Let bindings: let x = value in body
   def letExpr[$: P]: P[Term] =
-    P("let" ~ identifier ~ "=" ~ expr ~ "in" ~ expr).map { case (name, value, body) =>
-      Term.Let(name, value, body)
+    withSpan("let" ~ identifier ~ "=" ~ expr ~ "in" ~ expr) { case ((name, value, body), span) =>
+      Term.Let(name, value, body, span)
     }
 
   // If expressions: if cond then thenBranch else elseBranch
   def ifExpr[$: P]: P[Term] =
-    P("if" ~ expr ~ "then" ~ expr ~ "else" ~ expr).map { case (cond, thenBranch, elseBranch) =>
-      Term.If(cond, thenBranch, elseBranch)
+    withSpan("if" ~ expr ~ "then" ~ expr ~ "else" ~ expr) {
+      case ((cond, thenBranch, elseBranch), span) =>
+        Term.If(cond, thenBranch, elseBranch, span)
     }
 
   // Application: f x y (left-associative)
   def application[$: P]: P[Term] =
-    P(atom.rep(1)).map { terms =>
-      terms.tail.foldLeft(terms.head)((func, arg) => Term.App(func, arg))
+    P(Index ~ atom.rep(1) ~ Index).map { case (start, terms, end) =>
+      val span = makeSpan(start, end)
+      terms.tail.foldLeft(terms.head)((func, arg) => Term.App(func, arg, span))
     }
 
   // Unary operators: not, print, println (order matters - longest first!)
   def unary[$: P]: P[Term] =
     P(
-      ("not" ~~ !(CharIn("a-zA-Z0-9_")) ~ unary).map(Term.Not.apply) |
-        ("println" ~~ !(CharIn("a-zA-Z0-9_")) ~ unary).map(Term.Println.apply) |
-        ("print" ~~ !(CharIn("a-zA-Z0-9_")) ~ unary).map(Term.Print.apply) |
+      withSpan("not" ~~ !(CharIn("a-zA-Z0-9_")) ~ unary)((operand, span) =>
+        Term.Not(operand, span)
+      ) |
+        withSpan("println" ~~ !(CharIn("a-zA-Z0-9_")) ~ unary)((operand, span) =>
+          Term.Println(operand, span)
+        ) |
+        withSpan("print" ~~ !(CharIn("a-zA-Z0-9_")) ~ unary)((operand, span) =>
+          Term.Print(operand, span)
+        ) |
         application
     )
 
   // Multiplicative operators: *, (left-associative)
   def multiplicative[$: P]: P[Term] =
-    P(unary ~ ("*" ~ unary).rep).map { case (first, rest) =>
-      rest.foldLeft(first)((left, right) => Term.Mult(left, right))
+    P(Index ~ unary ~ ("*" ~ unary).rep ~ Index).map { case (start, first, rest, end) =>
+      val span = makeSpan(start, end)
+      rest.foldLeft(first)((left, right) => Term.Mult(left, right, span))
     }
 
   // Additive operators: +, ++ (left-associative)
   def additive[$: P]: P[Term] =
     P(
-      multiplicative ~ (("++" ~ multiplicative).map(("++", _)) | ("+" ~ multiplicative).map(
+      Index ~ multiplicative ~ (("++" ~ multiplicative).map(("++", _)) | ("+" ~ multiplicative).map(
         ("+", _)
-      )).rep
-    ).map { case (first, rest) =>
+      )).rep ~ Index
+    ).map { case (start, first, rest, end) =>
+      val span = makeSpan(start, end)
       rest.foldLeft(first) { case (left, (op, right)) =>
-        if op == "+" then Term.Add(left, right)
-        else Term.StringConcat(left, right)
+        if op == "+" then Term.Add(left, right, span)
+        else Term.StringConcat(left, right, span)
       }
     }
 
   // Comparison operators: ==, (non-associative)
   def comparison[$: P]: P[Term] =
-    P(additive ~ ("==" ~ additive).?).map {
-      case (left, Some(right)) => Term.Eq(left, right)
-      case (term, None) => term
+    P(Index ~ additive ~ ("==" ~ additive).? ~ Index).map { case (start, left, maybeRight, end) =>
+      maybeRight match
+        case Some(right) =>
+          val span = makeSpan(start, end)
+          Term.Eq(left, right, span)
+        case None => left
     }
 
   // Logical operators: &&, (left-associative)
   def logical[$: P]: P[Term] =
-    P(comparison ~ ("&&" ~ comparison).rep).map { case (first, rest) =>
-      rest.foldLeft(first)((left, right) => Term.And(left, right))
+    P(Index ~ comparison ~ ("&&" ~ comparison).rep ~ Index).map { case (start, first, rest, end) =>
+      val span = makeSpan(start, end)
+      rest.foldLeft(first)((left, right) => Term.And(left, right, span))
     }
 
   // Top-level expression parser
@@ -139,8 +169,10 @@ private[microml] object TermParser:
   // Parse a complete program (expression with optional surrounding whitespace)
   def program[$: P]: P[Term] = P(Start ~ expr ~ End)
 
+private[microml] object TermParser:
   // Convenience method to parse a string
-  def parse(input: String): Either[String, Term] =
-    fastparse.parse(input, program(_)) match
+  def parse(input: String, source: String = "<input>"): Either[String, Term] =
+    val instance = TermParserInstance(input, source)
+    fastparse.parse(input, instance.program(_)) match
       case Parsed.Success(term, _) => Right(term)
       case f: Parsed.Failure => Left(f.trace().longMsg)
