@@ -22,9 +22,6 @@
 
 ## Tasks
 
-* ~~update the read me in light of `docs/` and `context/todo.md`~~ DONE
-    - ~~also format `docs/vision-and-architecture.md` to 120 cols max lines.~~ DONE
-
 * replace the lambda calculus demo 
     - implement the example using MicroML directly
         - write the equivalent source to the current programatically built ast.
