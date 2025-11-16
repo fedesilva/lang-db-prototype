@@ -141,13 +141,30 @@ Adding a new language becomes a clear, modular process:
 
 ### Library Distribution & WPO-by-Default
 
-Libraries are distributed as Parquet files containing their fully typed INIR graph.
+Stable compilation artifacts are shared as libraries—Parquet files containing their fully typed INIR
+graph.
+
+**Why Parquet:**
+- High compression reduces distribution size
+- Columnar format enables partial reads: query names, types, and signatures without loading full
+  implementations
+- Standard format with broad tooling support
 
 **Linking is Graph Subsumption:**
-- When you import a library, its graph is merged into your working graph.
-- This provides Whole-Program Optimization (WPO) by default. The compiler's optimization passes run on the
-  entire merged graph, enabling it to inline, specialize, and fuse code across library boundaries as if
-  it were all one project.
+- When you import a library, its graph is merged (subsumed) into your working graph
+- This provides Whole-Program Optimization (WPO) by default: optimization passes run on the entire
+  merged graph, enabling inlining, specialization, and fusion across library boundaries
+
+**Late-Stage Native Optimization:**
+- Because the full INIR is available, native optimizations can be applied based on the target
+  architecture
+- The final binary can be optimized beyond what the library author could anticipate or provide
+
+**Pay-Per-Use Codegen:**
+- Codegen walks from the entry point (for executables) or public API (for libraries)
+- Use a single function from a huge library? Only that function and its transitive dependencies are
+  compiled
+- Unused code is never visited, never emitted—true zero-cost abstraction
 
 ## Graph Structure Details
 
