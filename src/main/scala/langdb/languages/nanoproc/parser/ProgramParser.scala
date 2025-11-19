@@ -9,8 +9,11 @@ import MultiLineWhitespace.*
 /** Parser for NanoProc, a small imperative language. */
 private[nanoproc] class ProgramParserInstance(input: String, source: String):
 
+  // Precompute positions once to avoid O(n²) performance
+  private val positions: Map[Int, SourceSpan.Position] = SourceSpan.computePositions(input)
+
   private def makeSpan(start: Int, end: Int): SourceSpan =
-    SourceSpan.fromIndices(source, input, start, end)
+    SourceSpan.fromPositions(source, positions, start, end)
 
   // Helpers to capture source spans
   def withSpanExpr[$: P, T](p: => P[T])(f: (T, SourceSpan) => Expr): P[Expr] =

@@ -31,11 +31,14 @@ case class SourceSpan(
     else s"$source:$startLine:$startCol-$endLine:$endCol"
 
 object SourceSpan:
-  private case class Position(line: Int, col: Int)
+  case class Position(line: Int, col: Int)
 
-  /** Create a SourceSpan from start and end indices by scanning the source text. */
-  def fromIndices(source: String, input: String, start: Int, end: Int): SourceSpan =
-    // Fold over characters to track line/col positions
+  /** Precompute line/column positions for all character indices in the input.
+    *
+    * This should be called once per input string and the result reused for multiple SourceSpan
+    * creations to avoid O(n²) performance when parsing.
+    */
+  def computePositions(input: String): Map[Int, Position] =
     val (finalPos, initialMap) = input.zipWithIndex
       .foldLeft((Position(1, 1), Map.empty[Int, Position])) {
         case ((pos @ Position(line, col), map), (char, idx)) =>
@@ -47,12 +50,32 @@ object SourceSpan:
       }
 
     // Add the position *after* the last character (input.length)
-    val positions = initialMap + (input.length -> finalPos)
+    initialMap + (input.length -> finalPos)
 
+  /** Create a SourceSpan from precomputed positions.
+    *
+    * Use this method when you have already called computePositions() to avoid redundant scanning of
+    * the input.
+    */
+  def fromPositions(
+    source:    String,
+    positions: Map[Int, Position],
+    start:     Int,
+    end:       Int
+  ): SourceSpan =
     val startPos = positions.getOrElse(start, Position(1, 1))
     val endPos   = positions.getOrElse(end, startPos)
 
     SourceSpan(source, startPos.line, startPos.col, endPos.line, endPos.col, start, end)
+
+  /** Create a SourceSpan from start and end indices by scanning the source text.
+    *
+    * Note: This method scans the entire input for each call. For parsing multiple spans from the
+    * same input, use computePositions() once and then call fromPositions() repeatedly.
+    */
+  def fromIndices(source: String, input: String, start: Int, end: Int): SourceSpan =
+    val positions = computePositions(input)
+    fromPositions(source, positions, start, end)
 
   /** Create a SourceSpan for a single position. */
   def point(source: String, input: String, index: Int): SourceSpan =
