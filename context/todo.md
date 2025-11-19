@@ -23,16 +23,33 @@
 ## Tasks
 
 
-* [DONE] parsers and asts: track and store SourceSpans(line, col, charindex)
+* parsers and asts: track and store SourceSpans(line, col, charindex)
     - for provenance, later
     - for completeness
     - test
     - Implementation: SourceSpan type, both parsers capture positions, all ASTs updated
     - Codebase made purely functional (removed var, ThreadLocal, mutable collections)
 
+    [ISSUES]
+
+    - Nested expression spans collapse: chained applications/operators always reuse the full expression span for every newly
+    synthesized node (`src/main/scala/langdb/languages/microml/parser/TermParser.scala:106-164` and
+    `src/main/scala/langdb/languages/nanoproc/parser/ProgramParser.scala:110-160`). As soon as you parse something like `f x y`
+    or `1 + 2 + 3`, the intermediate `App`/`Add` nodes inherit the span of the entire chain rather than the slice they actually
+    cover, which breaks the provenance guarantees you just added and makes precise diagnostics impossible. Each fold step needs
+    to derive a span from the operands (start = left.startIndex, end = right.endIndex) instead of reusing the outer `Index`
+    pair.
+
+    - SourceSpan generation is quadratic: every call to `SourceSpan.fromIndices` scans the entire input and rebuilds an index→
+    position map (`src/main/scala/langdb/common/SourceSpan.scala:36-55`). Because the parsers invoke it for nearly every node,
+    parsing costs blow up to O(n²) for long files. Consider precomputing a line/column lookup table once per parser instance or
+    threading line/column counters directly from FastParse to keep span creation O(1).
+
 * update the graph to be capable of storing arbitrary (the two languages) languages.
     - design task:
         - look at the current graph api
+            - the current graph api is insuficient and the implementation is buggy as heck
+                - see `context/graph-bugs.md`
         - look at both parsers/asts
         - do we have the tools in the api to serialize the asts into the graph engine?
     - we should

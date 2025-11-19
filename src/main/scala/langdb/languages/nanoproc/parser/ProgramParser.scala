@@ -2,7 +2,7 @@ package langdb.languages.nanoproc.parser
 
 import fastparse.*
 import langdb.common.SourceSpan
-import langdb.languages.nanoproc.ast.{Expr, Program, ProcDef, Stmt, Type}
+import langdb.languages.nanoproc.ast.{Expr, ProcDef, Program, Stmt, Type}
 
 import MultiLineWhitespace.*
 

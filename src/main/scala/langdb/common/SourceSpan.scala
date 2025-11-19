@@ -36,7 +36,7 @@ object SourceSpan:
   /** Create a SourceSpan from start and end indices by scanning the source text. */
   def fromIndices(source: String, input: String, start: Int, end: Int): SourceSpan =
     // Fold over characters to track line/col positions
-    val positions = input.zipWithIndex
+    val (finalPos, initialMap) = input.zipWithIndex
       .foldLeft((Position(1, 1), Map.empty[Int, Position])) {
         case ((pos @ Position(line, col), map), (char, idx)) =>
           val newMap = map + (idx -> pos)
@@ -45,7 +45,9 @@ object SourceSpan:
             else Position(line, col + 1)
           (nextPos, newMap)
       }
-      ._2
+
+    // Add the position *after* the last character (input.length)
+    val positions = initialMap + (input.length -> finalPos)
 
     val startPos = positions.getOrElse(start, Position(1, 1))
     val endPos   = positions.getOrElse(end, startPos)

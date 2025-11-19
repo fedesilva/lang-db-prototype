@@ -1,6 +1,6 @@
 package langdb.languages.microml.parser
 
-import langdb.languages.microml.ast.{Term, TermTestHelper as T, Type}
+import langdb.languages.microml.ast.{Term, Type}
 import munit.FunSuite
 
 class MicroMLParserSpec extends FunSuite:

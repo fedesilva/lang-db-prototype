@@ -123,7 +123,7 @@ object TypeChecker:
           valueType <- typeCheckExpr(value, ctx)
           _ <- expectedReturn match
             case Some(expected) => ensureType(valueType, expected)
-            case None => IO.raiseError(new TypeError { def message = "Return outside procedure" })
+            case None => IO.raiseError(new TypeError { def message: String = "Return outside procedure" })
         yield ctx
 
       case Stmt.If(cond, thenBlock, elseBlock, _) =>
