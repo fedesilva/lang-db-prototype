@@ -19,8 +19,11 @@ import MultiLineWhitespace.*
   */
 private[microml] class TermParserInstance(input: String, source: String):
 
+  // Precompute positions once to avoid O(n²) performance
+  private val positions: Map[Int, SourceSpan.Position] = SourceSpan.computePositions(input)
+
   private def makeSpan(start: Int, end: Int): SourceSpan =
-    SourceSpan.fromIndices(source, input, start, end)
+    SourceSpan.fromPositions(source, positions, start, end)
 
   // Helper to capture source spans
   def withSpan[$: P, T](p: => P[T])(f: (T, SourceSpan) => Term): P[Term] =
